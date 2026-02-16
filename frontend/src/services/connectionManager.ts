@@ -17,9 +17,12 @@ class ConnectionManager {
   private connectionId: string | null = null;
 
   private getWebSocketUrl(sessionId: string): string {
+    // For local development, use localhost
     if (import.meta.env.DEV) {
       return `ws://localhost:8080/ws/${sessionId}`;
     }
+    
+    // For production, use the current host with proper protocol
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     return `${protocol}//${host}/ws/${sessionId}`;
@@ -42,22 +45,26 @@ class ConnectionManager {
   }
 
   connect(sessionId: string): void {
+    // If already connecting to the same session, don't start another connection
     if (this.connectionInProgress && this.sessionId === sessionId) {
       console.log('[ConnectionManager] Connection already in progress for this session');
       return;
     }
 
+    // If already connected to this session, don't reconnect
     if (this.ws?.readyState === WebSocket.OPEN && this.sessionId === sessionId) {
       console.log('[ConnectionManager] Already connected to session', sessionId);
       this.setStatus('connected');
       return;
     }
 
+    // If we're switching sessions, clean up old connection
     if (this.sessionId && this.sessionId !== sessionId) {
       console.log('[ConnectionManager] Switching sessions, cleaning up old connection');
       this.disconnect();
     }
 
+    // Generate a unique ID for this connection attempt
     const newConnectionId = `${sessionId}-${Date.now()}-${Math.random()}`;
     this.connectionId = newConnectionId;
     this.sessionId = sessionId;
@@ -68,7 +75,9 @@ class ConnectionManager {
 
     try {
       const wsUrl = this.getWebSocketUrl(sessionId);
+      console.log('[ConnectionManager] WebSocket URL:', wsUrl);
 
+      // Close any existing socket
       if (this.ws) {
         try {
           this.ws.close();
@@ -79,6 +88,7 @@ class ConnectionManager {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
+        // Check if this is still the current connection attempt
         if (this.connectionId !== newConnectionId) {
           console.log('[ConnectionManager] Stale connection opened, ignoring');
           return;
@@ -92,6 +102,7 @@ class ConnectionManager {
       };
 
       this.ws.onmessage = (event) => {
+        // Only process messages for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         try {
@@ -121,6 +132,7 @@ class ConnectionManager {
       };
 
       this.ws.onerror = (error) => {
+        // Only handle errors for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         console.error('[ConnectionManager] WebSocket error:', error);
@@ -129,6 +141,7 @@ class ConnectionManager {
       };
 
       this.ws.onclose = (event) => {
+        // Only handle close for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         console.log('[ConnectionManager] WebSocket closed:', event.code, event.reason);
@@ -140,6 +153,10 @@ class ConnectionManager {
           return;
         }
 
+        // Only attempt reconnect if:
+        // 1. We should reconnect
+        // 2. Not a normal close (1000)
+        // 3. Haven't exceeded max attempts
         if (this.shouldReconnect && event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
         } else {
