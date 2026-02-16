@@ -18,6 +18,18 @@ class WebSocketService {
   private connectionInProgress = false;
   private terminating = false;
 
+  private getWebSocketUrl(sessionId: string): string {
+    // For local development, use localhost
+    if (import.meta.env.DEV) {
+      return `ws://localhost:8080/ws/${sessionId}`;
+    }
+    
+    // For production, use the current host with proper protocol
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}/ws/${sessionId}`;
+  }
+
   connect(sessionId: string): Promise<void> {
     if (this.terminating) {
       return Promise.reject(new Error('Terminating'));
@@ -43,7 +55,7 @@ class WebSocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        const wsUrl = `ws://localhost:8080/ws/${sessionId}`;
+        const wsUrl = this.getWebSocketUrl(sessionId);
         console.log('[WebSocket] Connecting to:', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
@@ -58,7 +70,7 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            
+
             // Log all incoming messages for debugging
             console.log('[WebSocket] Received:', data.type, data);
 
@@ -143,7 +155,7 @@ class WebSocketService {
 
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 16000);
-    
+
     console.log(`[WebSocket] Reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
 
     this.reconnectTimer = setTimeout(() => {
