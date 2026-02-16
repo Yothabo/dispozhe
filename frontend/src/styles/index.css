@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&display=swap');
+@import './animations.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-navy text-grey font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(40px, -30px) scale(1.05);
+    }
+    50% {
+      transform: translate(-20px, 30px) scale(0.95);
+    }
+    75% {
+      transform: translate(30px, 20px) scale(1.02);
+    }
+  }
+
+  .animate-blob {
+    animation: blob 25s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  .animation-delay-6000 {
+    animation-delay: 6s;
+  }
+
+  .glass {
+    @apply bg-navy-light/30 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-navy-light/40 backdrop-blur-md border border-white/5 shadow-lg hover:border-sky/20 transition-all duration-500;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-sky to-sky-dark bg-clip-text text-transparent;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-sky to-sky-dark text-navy px-6 sm:px-8 font-bold text-base sm:text-lg
+           flex items-center gap-2 sm:gap-3 transition-all duration-300
+           hover:shadow-[0_0_30px_rgba(100,255,218,0.3)] hover:-translate-y-1
+           focus:outline-none focus:ring-2 focus:ring-sky/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .btn-secondary {
+    @apply border border-white/20 text-white px-6 sm:px-8 font-medium text-base sm:text-lg
+           transition-all duration-300 hover:bg-white/10 hover:border-white/30
+           focus:outline-none focus:ring-2 focus:ring-white/30
+           backdrop-blur-sm flex items-center gap-2;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .card {
+    @apply glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 transition-all duration-500
+           hover:transform hover:scale-[1.02] hover:bg-navy-light/50 w-full;
+  }
+
+  .feature-icon {
+    @apply mb-4 sm:mb-6;
+  }
+
+  .feature-title {
+    @apply text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4;
+  }
+
+  .feature-description {
+    @apply text-grey text-sm sm:text-base leading-relaxed font-normal;
+  }
+
+  .hero-title {
+    @apply text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight;
+  }
+
+  .hero-subtitle {
+    @apply text-lg sm:text-xl lg:text-2xl text-grey-light mt-4 sm:mt-6 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed font-light;
+  }
+
+  .step-number {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-black text-gradient;
+  }
+
+  .step-content h3 {
+    @apply text-lg sm:text-lg lg:text-xl xl:text-2xl font-bold text-white mb-1 sm:mb-2;
+  }
+
+  .step-content p {
+    @apply text-grey text-xs sm:text-sm lg:text-base leading-relaxed font-light;
+  }
+
+  .footer-link {
+    @apply text-grey hover:text-sky transition-all duration-300
+           hover:translate-y-[-2px] inline-flex items-center gap-2 text-sm sm:text-base font-normal;
+  }
+
+  .section-title {
+    @apply text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-4 sm:mb-6;
+  }
+
+  .digit-display {
+    @apply font-black tracking-wider;
+  }
+}
+
+/* Goldman font utility */
+.font-goldman {
+  font-family: 'Goldman', cursive;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-navy/50 backdrop-blur-sm;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gradient-to-b from-sky/40 to-sky-dark/40 rounded-full border-2 border-navy;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply from-sky to-sky-dark;
+}
+
+/* Selection color */
+::selection {
+  @apply bg-sky/30 text-white;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Remove any default margins/paddings */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure full width on mobile */
+html, body, #root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.message-bubble {
+  animation: slideIn 0.2s ease-out;
+}
+
+.typing-indicator span {
+  animation: typingPulse 1.4s infinite;
+}
+
+/* Consistent button height for action buttons (excludes footer) */
+.action-button, 
+button.btn-primary, 
+button.btn-secondary,
+.duration-action-button {
+  height: 56px;
+  border-radius: 16px;
+}
+
+/* Footer buttons keep their original styling */
+.footer-link {
+  height: auto;
+  border-radius: 0;
+}
