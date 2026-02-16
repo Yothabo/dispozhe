@@ -14,7 +14,16 @@ class ConnectionManager {
   private connectionInProgress = false;
   private isTerminated = false;
   private shouldReconnect = true;
-  private connectionId: string | null = null; // Unique ID for this connection instance
+  private connectionId: string | null = null;
+
+  private getWebSocketUrl(sessionId: string): string {
+    if (import.meta.env.DEV) {
+      return `ws://localhost:8080/ws/${sessionId}`;
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}/ws/${sessionId}`;
+  }
 
   getStatus(): ConnectionStatus {
     return this.status;
@@ -33,26 +42,22 @@ class ConnectionManager {
   }
 
   connect(sessionId: string): void {
-    // If already connecting to the same session, don't start another connection
     if (this.connectionInProgress && this.sessionId === sessionId) {
       console.log('[ConnectionManager] Connection already in progress for this session');
       return;
     }
 
-    // If already connected to this session, don't reconnect
     if (this.ws?.readyState === WebSocket.OPEN && this.sessionId === sessionId) {
       console.log('[ConnectionManager] Already connected to session', sessionId);
       this.setStatus('connected');
       return;
     }
 
-    // If we're switching sessions, clean up old connection
     if (this.sessionId && this.sessionId !== sessionId) {
       console.log('[ConnectionManager] Switching sessions, cleaning up old connection');
       this.disconnect();
     }
 
-    // Generate a unique ID for this connection attempt
     const newConnectionId = `${sessionId}-${Date.now()}-${Math.random()}`;
     this.connectionId = newConnectionId;
     this.sessionId = sessionId;
@@ -62,9 +67,8 @@ class ConnectionManager {
     console.log(`[ConnectionManager] Connecting to session ${sessionId} (ID: ${newConnectionId})`);
 
     try {
-      const wsUrl = `ws://localhost:8080/ws/${sessionId}`;
-      
-      // Close any existing socket
+      const wsUrl = this.getWebSocketUrl(sessionId);
+
       if (this.ws) {
         try {
           this.ws.close();
@@ -75,7 +79,6 @@ class ConnectionManager {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        // Check if this is still the current connection attempt
         if (this.connectionId !== newConnectionId) {
           console.log('[ConnectionManager] Stale connection opened, ignoring');
           return;
@@ -89,23 +92,22 @@ class ConnectionManager {
       };
 
       this.ws.onmessage = (event) => {
-        // Only process messages for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === 'ping' || data.type === 'pong') {
             return;
           }
-          
+
           if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
             console.log(`[ConnectionManager] Received ${data.type}`);
             this.isTerminated = true;
             this.shouldReconnect = false;
             this.stopHeartbeat();
           }
-          
+
           this.messageHandlers.forEach(handler => {
             try {
               handler(data);
@@ -119,7 +121,6 @@ class ConnectionManager {
       };
 
       this.ws.onerror = (error) => {
-        // Only handle errors for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         console.error('[ConnectionManager] WebSocket error:', error);
@@ -128,22 +129,17 @@ class ConnectionManager {
       };
 
       this.ws.onclose = (event) => {
-        // Only handle close for the current connection
         if (this.connectionId !== newConnectionId) return;
 
         console.log('[ConnectionManager] WebSocket closed:', event.code, event.reason);
         this.connectionInProgress = false;
         this.stopHeartbeat();
-        
+
         if (this.isTerminated) {
           this.setStatus('disconnected');
           return;
         }
 
-        // Only attempt reconnect if:
-        // 1. We should reconnect
-        // 2. Not a normal close (1000)
-        // 3. Haven't exceeded max attempts
         if (this.shouldReconnect && event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
         } else {
@@ -180,9 +176,9 @@ class ConnectionManager {
 
     this.reconnectAttempts++;
     const delay = 2000 * this.reconnectAttempts;
-    
+
     console.log(`[ConnectionManager] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-    
+
     this.reconnectTimer = setTimeout(() => {
       if (this.sessionId && !this.isTerminated && this.shouldReconnect) {
         this.connect(this.sessionId);
@@ -196,19 +192,19 @@ class ConnectionManager {
     this.connectionInProgress = false;
     this.isTerminated = false;
     this.connectionId = null;
-    
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    
+
     this.stopHeartbeat();
-    
+
     if (this.ws) {
       this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
-    
+
     this.sessionId = null;
     this.setStatus('disconnected');
   }
