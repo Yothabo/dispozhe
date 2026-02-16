@@ -1,5 +1,5 @@
 // Use environment variable with fallback for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8080';
 
 export interface CreateSessionRequest {
   duration: number;
