@@ -4,7 +4,7 @@ const FeaturesContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Chatlly is designed with privacy as the primary requirement.
+        Driflly is designed with privacy as the primary requirement.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">Self-Destructing Sessions</h4>
@@ -33,7 +33,7 @@ const FeaturesContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">No Identity Required</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly does not require email addresses, phone numbers, names, or any form of identification to use the service.
+          Driflly does not require email addresses, phone numbers, names, or any form of identification to use the service.
         </p>
       </div>
     </div>

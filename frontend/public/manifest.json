@@ -1,0 +1,23 @@
+{
+  "name": "Driflly - Ephemeral Encrypted Chats",
+  "short_name": "Driflly",
+  "description": "Private, ephemeral chat rooms that vanish without a trace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A192F",
+  "theme_color": "#0A192F",
+  "icons": [
+    {
+      "src": "/Driflly.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Driflly.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -27,19 +27,19 @@ message_queue: Dict[str, List[dict]] = defaultdict(list)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Chatlly backend...")
+    logger.info("Starting dispozhe backend...")
     app.state.expiry_service = ExpiryService()
     app.state.expiry_service.start()
     app.state.manager = ConnectionManager()
     app.state.manager.set_expiry_service(app.state.expiry_service)
     app.state.code_generator = CodeGenerator()
-    logger.info("Chatlly backend started successfully")
+    logger.info("dispozhe backend started successfully")
     yield
-    logger.info("Shutting down Chatlly backend...")
+    logger.info("Shutting down dispozhe backend...")
     app.state.expiry_service.stop()
-    logger.info("Chatlly backend stopped")
+    logger.info("dispozhe backend stopped")
 
-app = FastAPI(title="Chatlly API", description="Secure temporary chat backend - blind relay only", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="dispozhe API", description="Secure temporary chat backend - blind relay only", version="1.0.0", lifespan=lifespan)
 
 # Updated CORS with all necessary origins
 app.add_middleware(
@@ -57,7 +57,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "Chatlly backend"}
+    return {"status": "healthy", "service": "dispozhe backend"}
 
 @app.post("/session/create", response_model=SessionResponse)
 async def create_session(request: SessionCreate, db: Session = Depends(get_db)):

@@ -4,7 +4,7 @@ const HowItWorksContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Chatlly enables private, ephemeral communication through a simple four-step process.
+        Driflly enables private, ephemeral communication through a simple four-step process.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">1. Room Creation</h4>

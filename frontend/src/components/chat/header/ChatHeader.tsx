@@ -24,7 +24,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`} />
-            <span className="text-white text-sm font-medium">Chatlly</span>
+            <span className="text-white text-sm font-medium">Driflly</span>
           </div>
           <div className="h-4 w-px bg-white/10" />
           <button

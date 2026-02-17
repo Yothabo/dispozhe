@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Dynamic Meta Tags - These will be overwritten by JavaScript -->
+    <meta property="og:title" content="Join a private conversation on Driflly">
+    <meta property="og:description" content="You're invited to a private, encrypted chat that will disappear after the conversation ends.">
+    <meta property="og:image" content="https://Driflly.netlify.app/chat-invite.png">
+    <meta property="og:url" content="https://Driflly.netlify.app/c/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Join a private conversation on Driflly">
+    <meta name="twitter:description" content="You're invited to a private, encrypted chat that will disappear after the conversation ends.">
+    <meta name="twitter:image" content="https://Driflly.netlify.app/chat-invite.png">
+
+    <!-- Script to dynamically update meta tags for invite links -->
+    <script>
+      (function() {
+        // Check if this is a chat invite link (contains /c/ in path)
+        if (window.location.pathname.includes('/c/')) {
+          // Update title
+          document.title = 'Driflly · Private Chat Invitation';
+
+          // Update meta tags
+          const updates = {
+            'og:title': '🔐 You're invited to a private chat',
+            'og:description': 'Join an encrypted conversation that will disappear when you're done. No sign-up required.',
+            'twitter:title': '🔐 You're invited to a private chat',
+            'twitter:description': 'Join an encrypted conversation that will disappear when you're done. No sign-up required.'
+          };
+
+          // Apply updates
+          for (const [property, content] of Object.entries(updates)) {
+            const meta = document.querySelector(`meta[property="${property}"]`);
+            if (meta) meta.setAttribute('content', content);
+          }
+        }
+      })();
+    </script>
+
+    <!-- Rest of the head content -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driflly - Private Chat Invitation</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Goldman:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

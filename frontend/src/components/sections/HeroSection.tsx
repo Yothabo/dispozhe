@@ -10,8 +10,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
   const navigate = useNavigate();
 
   return (
-    <section className="w-full min-h-screen flex items-center">
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-16">
+    <section className="w-full min-h-screen flex items-center relative overflow-hidden">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-16 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="text-left">
             <div className="inline-flex items-center gap-2 bg-sky/10 border border-sky/20 px-4 sm:px-5 py-2 rounded-2xl mb-6">
@@ -19,12 +19,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               <span className="text-sky text-xs sm:text-sm font-medium tracking-wide">END-TO-END ENCRYPTED</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6">
-              <span className="text-sky">Chatlly</span>,{' '}
-              <span className="text-white">Conversations that Vanish</span>
+              <span className="text-sky">Driflly</span>,{' '}
+              <span className="text-white">Conversations that vanish</span>
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-grey-light mb-8 leading-relaxed font-light max-w-xl">
-              Tired of apps that never forget? Chatlly creates private chat rooms that vanish when you're done, 
-              either by timer or by choice. Share a link, QR code, or 6-digit code. Talk. Then poof.
+              Chat rooms with no eyes and no ears. They don't watch, record, or store anything. 
+              They open when you join, fade when you leave, and nothing follows you out.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 mb-10">
               <div className="flex items-center gap-2 text-grey">
@@ -66,7 +66,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
                   </div>
                   <div className="flex-1">
                     <div className="bg-white/5 rounded-2xl rounded-tl-none p-3">
-                      <p className="text-white text-sm">This thing really vanish?</p>
+                      <p className="text-white text-sm">Is anyone listening?</p>
                     </div>
                     <span className="text-grey/50 text-[10px] mt-1 block">2 min left</span>
                   </div>
@@ -77,7 +77,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
                   </div>
                   <div className="flex-1">
                     <div className="bg-sky/10 rounded-2xl rounded-tr-none p-3 border border-sky/20">
-                      <p className="text-sky text-sm">Timer or terminate, your call.</p>
+                      <p className="text-sky text-sm">No eyes, no ears. Just us.</p>
                     </div>
                     <span className="text-grey/50 text-[10px] mt-1 block text-right">1 min left</span>
                   </div>
@@ -88,7 +88,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
                   </div>
                   <div className="flex-1">
                     <div className="bg-white/5 rounded-2xl rounded-tl-none p-3">
-                      <p className="text-white text-sm">Sending the link now...</p>
+                      <p className="text-white text-sm">Good. Sharing the link now...</p>
                     </div>
                     <span className="text-grey/50 text-[10px] mt-1 block">30 sec left</span>
                   </div>
@@ -102,7 +102,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
                     <div className="w-1/3 h-1 bg-sky rounded-full"></div>
                   </div>
                   <p className="text-grey/50 text-[10px] mt-2 text-center font-light">
-                    Or end it anytime with one click
+                    Fades when you leave. Nothing follows you out.
                   </p>
                 </div>
               </div>

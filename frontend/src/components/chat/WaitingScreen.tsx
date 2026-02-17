@@ -82,7 +82,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Chatlly - Secure Chat Invitation',
+          title: 'Driflly - Private Chat Invitation',
           text: 'Join me for a private, encrypted conversation that vanishes.',
           url: link,
         });
@@ -136,11 +136,45 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-navy">
-      <div className="flex-1 overflow-y-auto px-4 py-8">
+      <div className="flex-1 overflow-y-auto px-4 pt-24 pb-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col items-center justify-center min-h-full">
+          <div className="flex flex-col items-center justify-start min-h-full">
             
-            {/* Link Card */}
+            {/* HOW TO CONNECT - First */}
+            <div className="w-full max-w-md mb-6">
+              <h3 className="text-white/50 text-xs font-bold tracking-wide mb-4">HOW TO CONNECT</h3>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
+                    <span className="text-sky text-xs font-black">1</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-sm font-bold mb-0.5">Share the link</h4>
+                    <p className="text-grey text-xs font-light leading-relaxed">Send the link above. Opens directly in browser.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
+                    <span className="text-sky text-xs font-black">2</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-sm font-bold mb-0.5">Scan QR code</h4>
+                    <p className="text-grey text-xs font-light leading-relaxed">Quick connect for mobile users.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
+                    <span className="text-sky text-xs font-black">3</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-sm font-bold mb-0.5">Enter 6-digit code</h4>
+                    <p className="text-grey text-xs font-light leading-relaxed">Alternative for voice/phone sharing.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Shareable Link Card - Second */}
             <div className="glass rounded-2xl p-6 mb-6 w-full max-w-md">
               <div className="flex items-center gap-2 mb-4">
                 <FaLink className="text-sky w-4 h-4" />
@@ -189,44 +223,12 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
               </div>
             </div>
 
-            {/* Information Panel */}
+            {/* Note - Third */}
             <div className="w-full max-w-md">
-              <h3 className="text-white/50 text-xs font-bold tracking-wide mb-4">HOW TO CONNECT</h3>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
-                    <span className="text-sky text-xs font-black">1</span>
-                  </div>
-                  <div>
-                    <h4 className="text-white text-sm font-bold mb-0.5">Share the link</h4>
-                    <p className="text-grey text-xs font-light leading-relaxed">Send the link above. Opens directly in browser.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
-                    <span className="text-sky text-xs font-black">2</span>
-                  </div>
-                  <div>
-                    <h4 className="text-white text-sm font-bold mb-0.5">Scan QR code</h4>
-                    <p className="text-grey text-xs font-light leading-relaxed">Quick connect for mobile users.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-sky/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky/20">
-                    <span className="text-sky text-xs font-black">3</span>
-                  </div>
-                  <div>
-                    <h4 className="text-white text-sm font-bold mb-0.5">Enter 6-digit code</h4>
-                    <p className="text-grey text-xs font-light leading-relaxed">Alternative for voice/phone sharing.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <p className="text-grey/50 text-xs font-light leading-relaxed">
-                  <span className="text-sky font-bold">Note:</span> All methods are one-time use. 
-                  The link expires immediately after someone joins.
-                </p>
-              </div>
+              <p className="text-grey/50 text-xs font-light leading-relaxed">
+                <span className="text-sky font-bold">Note:</span> All methods are one-time use. 
+                The link expires immediately after someone joins.
+              </p>
             </div>
 
             {/* Waiting Indicator */}
@@ -279,7 +281,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
         </div>
       )}
 
-      {/* Code Modal - Updated to match landing page exactly */}
+      {/* Code Modal */}
       {showCodeModal && code && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-sm">
           <div className="glass rounded-2xl p-8 max-w-md w-full">
@@ -337,21 +339,15 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
       {/* Termination Modal */}
       {showTerminateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-sm">
-          <div className="glass rounded-2xl p-6 max-w-md w-full">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center">
-              {!isDestroyed ? (
-                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                  <FaTrash className="w-5 h-5 text-red-400" />
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-sky/10 flex items-center justify-center border border-sky/20">
-                  <FaCheck className="w-5 h-5 text-sky" />
-                </div>
-              )}
+          <div className="glass rounded-2xl p-8 max-w-md w-full mx-4 border border-white/10 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+              <FaTrash className="w-6 h-6 text-red-400" />
             </div>
+            
             <h3 className="text-white text-xl font-bold text-center mb-4">
-              {!isDestroyed ? 'Terminate Session' : 'Session Destroyed'}
+              Terminate Session
             </h3>
+            
             <div className="space-y-3 mb-6">
               {[
                 'Destroy invitation link',
@@ -361,7 +357,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
                 'Purge all traces from database'
               ].map((label, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <div className="w-4 h-4 flex items-center justify-center">
+                  <div className="w-5 h-5 flex items-center justify-center">
                     {itemStates[index].status === 'pending' && <div className="w-1.5 h-1.5 rounded-full bg-grey/30"></div>}
                     {itemStates[index].status === 'loading' && <FaSpinner className="w-3 h-3 text-sky animate-spin" />}
                     {itemStates[index].status === 'completed' && <FaCheck className="w-3 h-3 text-sky" />}
@@ -370,32 +366,29 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
                 </div>
               ))}
             </div>
+            
             <div className="flex gap-3">
-              {!isDestroyed ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setShowTerminateModal(false);
-                      setItemStates([
-                        { id: 1, status: 'pending' },
-                        { id: 2, status: 'pending' },
-                        { id: 3, status: 'pending' },
-                        { id: 4, status: 'pending' },
-                        { id: 5, status: 'pending' }
-                      ]);
-                    }}
-                    className="flex-1 px-3 py-2 bg-white/5 text-white rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleTerminateClick}
-                    className="flex-1 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500/50"
-                  >
-                    Terminate
-                  </button>
-                </>
-              ) : null}
+              <button
+                onClick={() => {
+                  setShowTerminateModal(false);
+                  setItemStates([
+                    { id: 1, status: 'pending' },
+                    { id: 2, status: 'pending' },
+                    { id: 3, status: 'pending' },
+                    { id: 4, status: 'pending' },
+                    { id: 5, status: 'pending' }
+                  ]);
+                }}
+                className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-colors border border-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTerminateClick}
+                className="flex-1 px-4 py-3 bg-red-500/10 text-red-400 rounded-xl font-bold hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500/50"
+              >
+                Terminate
+              </button>
             </div>
           </div>
         </div>

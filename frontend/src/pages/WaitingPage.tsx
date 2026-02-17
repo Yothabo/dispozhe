@@ -13,8 +13,6 @@ const WaitingPage: React.FC = () => {
   const [duration, setDuration] = useState<number>(30);
   const polling = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasNavigated = useRef<boolean>(false);
-  const pollCount = useRef<number>(0);
-  const navigationAttempted = useRef<boolean>(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -23,47 +21,38 @@ const WaitingPage: React.FC = () => {
     const fullLink = `${window.location.origin}/c/${sessionId}#${key}`;
     setLink(fullLink);
 
-    // Get session details
+    // Get session details - don't await, let it happen in background
     api.getSessionStatus(sessionId).then(status => {
       const mins = status.time_left_seconds ? Math.ceil(status.time_left_seconds / 60) : 30;
       setDuration(mins);
     }).catch(console.error);
 
-    // Get code from sessionStorage (set during creation)
-    const sessionCode = sessionStorage.getItem(`chatlly_code_${sessionId}`);
+    // Get code from sessionStorage
+    const sessionCode = sessionStorage.getItem(`Driflly_code_${sessionId}`);
     if (sessionCode) {
       setCode(sessionCode);
     }
 
-    // Poll for participant joining - REDUCED FREQUENCY
+    // Poll for participant joining - faster polling
     const poll = async () => {
-      if (hasNavigated.current || navigationAttempted.current) return;
+      if (hasNavigated.current) return;
 
       try {
-        pollCount.current++;
         const status = await api.getSessionStatus(sessionId);
-        console.log(`[WaitingPage] Poll #${pollCount.current}: ${status.status}, participants: ${status.participant_count}`);
         
         if (status.status === 'active' && status.participant_count === 2) {
-          console.log('[WaitingPage] Joiner arrived! Navigating to chat.');
           hasNavigated.current = true;
-          navigationAttempted.current = true;
 
-          // Clear interval IMMEDIATELY
+          // Clear interval immediately
           if (polling.current) {
             clearInterval(polling.current);
             polling.current = null;
           }
 
-          // Connect WebSocket before navigation
-          try {
-            await wsService.connect(sessionId);
-            console.log('[WaitingPage] Connected WebSocket');
-          } catch (err) {
-            console.error('[WaitingPage] Connect failed:', err);
-          }
+          // Connect WebSocket in background - don't wait for it
+          wsService.connect(sessionId).catch(console.error);
 
-          // Navigate to chat
+          // Navigate immediately
           navigate(`/chat/${sessionId}#${key}`, { replace: true });
         }
       } catch (err) {
@@ -71,13 +60,11 @@ const WaitingPage: React.FC = () => {
       }
     };
 
-    // Start polling - 2 seconds
+    // Start polling - fast 1 second polling
     poll();
-    polling.current = setInterval(poll, 2000);
+    polling.current = setInterval(poll, 1000);
 
-    // Cleanup function
     return () => {
-      console.log('[WaitingPage] Cleaning up polling');
       if (polling.current) {
         clearInterval(polling.current);
         polling.current = null;
@@ -89,8 +76,8 @@ const WaitingPage: React.FC = () => {
     if (sessionId) {
       try {
         await api.terminateSession(sessionId);
-        sessionStorage.removeItem(`chatlly_initiator_${sessionId}`);
-        sessionStorage.removeItem(`chatlly_code_${sessionId}`);
+        sessionStorage.removeItem(`Driflly_initiator_${sessionId}`);
+        sessionStorage.removeItem(`Driflly_code_${sessionId}`);
         wsService.disconnect();
       } catch (err) {
         console.error('Failed to terminate:', err);
@@ -98,9 +85,6 @@ const WaitingPage: React.FC = () => {
     }
     navigate('/');
   };
-
-  const handleCopy = () => {};
-  const handleCopyCode = () => {};
 
   if (!link) {
     return (
@@ -125,8 +109,8 @@ const WaitingPage: React.FC = () => {
           code={code}
           duration={duration}
           sessionId={sessionId!}
-          onCopy={handleCopy}
-          onCopyCode={handleCopyCode}
+          onCopy={() => {}}
+          onCopyCode={() => {}}
           onTerminate={handleTerminate}
         />
       </div>

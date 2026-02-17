@@ -2,6 +2,7 @@ import { useState } from 'react';
 import LandingPage from './pages/LandingPage';
 import CreateSessionPage from './pages/CreateSessionPage';
 import Background from './components/Background';
+import NotificationCenter from './components/NotificationCenter';
 import './styles/index.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   return (
     <div className="relative min-h-screen">
       <Background />
+      <NotificationCenter />
       <div className="relative z-10">
         {!hasStarted ? (
           <LandingPage onStartChat={handleStartChat} />

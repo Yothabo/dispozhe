@@ -49,8 +49,6 @@ const CodeEntryPage: React.FC = () => {
       navigate(`/waiting/${result.session_id}#${result.encryption_key}`);
     } catch (err: any) {
       console.error('Code entry error:', err);
-      
-      // Check if it's a 404 or specific error message
       if (err.message.includes('404') || err.message.includes('not found') || err.message.includes('Invalid or expired code')) {
         setError('No active chat linked to this code. Please ask for the correct code.');
       } else {
@@ -91,7 +89,7 @@ const CodeEntryPage: React.FC = () => {
           </div>
 
           <div
-            className="flex justify-between gap-2 mb-6"
+            className="flex justify-center gap-2 mb-6 px-2"
             onPaste={handlePaste}
           >
             {code.map((digit, index) => (
@@ -104,7 +102,7 @@ const CodeEntryPage: React.FC = () => {
                 value={digit}
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-14 text-center bg-white/5 border border-white/10 rounded-xl text-white text-2xl font-bold focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/50 placeholder:text-grey/30"
+                className="w-12 h-14 text-center bg-white/5 border border-white/10 rounded-xl text-white text-2xl font-bold focus:outline-none focus:border-sky/50 focus:ring-1 focus:ring-sky/50 placeholder:text-grey/30 mx-auto"
                 placeholder="0"
               />
             ))}

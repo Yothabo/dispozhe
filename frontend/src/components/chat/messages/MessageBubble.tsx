@@ -1,6 +1,6 @@
 import React from 'react'
 import { FaFile, FaImage, FaFilePdf, FaFileWord, FaDownload } from 'react-icons/fa'
-import { Message, FileMessage } from '../ActiveChat'
+import { Message, FileMessage } from '../types'
 
 interface MessageBubbleProps {
   message: Message

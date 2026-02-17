@@ -4,7 +4,7 @@ const SecurityContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Chatlly's security architecture is designed to protect user privacy.
+        Driflly's security architecture is designed to protect user privacy.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">Encryption Protocol</h4>
@@ -27,7 +27,7 @@ const SecurityContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">Open Source</h4>
         <p className="text-sm leading-relaxed">
-          The Chatlly codebase is open source and available for independent security auditing.
+          The Driflly codebase is open source and available for independent security auditing.
         </p>
       </div>
       <div className="space-y-4">

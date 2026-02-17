@@ -18,18 +18,23 @@ const CreateSessionPage: React.FC<CreateSessionPageProps> = ({ onExit }) => {
 
   const handleDurationSelect = async (minutes: number) => {
     try {
-      const key = await generateEncryptionKey();
-      const response = await api.createSession(minutes);
+      // Generate key and create session in parallel
+      const [key, response] = await Promise.all([
+        generateEncryptionKey(),
+        api.createSession(minutes)
+      ]);
 
-      sessionStorage.setItem(`chatlly_initiator_${response.session_id}`, 'true');
+      sessionStorage.setItem(`Driflly_initiator_${response.session_id}`, 'true');
 
       if (response.code) {
-        sessionStorage.setItem(`chatlly_code_${response.session_id}`, response.code);
+        sessionStorage.setItem(`Driflly_code_${response.session_id}`, response.code);
       }
 
+      // Navigate immediately - don't wait for anything else
       navigate(`/waiting/${response.session_id}#${key}`);
     } catch (err) {
       console.error('Failed to create session:', err);
+      throw err; // Re-throw so loading state can be cleared
     }
   };
 

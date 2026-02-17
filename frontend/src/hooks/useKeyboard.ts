@@ -4,12 +4,12 @@ const useKeyboard = (): number => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    // Use visualViewport API for more accurate keyboard detection
+    // For iOS Safari
     const handleVisualViewport = () => {
       if (window.visualViewport) {
-        // Calculate keyboard height as the difference between window innerHeight and visualViewport height
         const windowHeight = window.innerHeight;
         const visualHeight = window.visualViewport.height;
+        // Calculate keyboard height as the difference
         const height = Math.max(0, windowHeight - visualHeight);
         
         // Only update if significant change (keyboard open/close)
@@ -19,14 +19,7 @@ const useKeyboard = (): number => {
       }
     };
 
-    // Listen to visualViewport resize events
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleVisualViewport);
-      // Initial check
-      handleVisualViewport();
-    }
-
-    // Fallback for browsers without visualViewport
+    // For Android and other browsers
     const handleResize = () => {
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.clientHeight;
@@ -37,13 +30,22 @@ const useKeyboard = (): number => {
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    // Use visualViewport API for more accurate keyboard detection
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleVisualViewport);
+      // Initial check
+      handleVisualViewport();
+    } else {
+      window.addEventListener('resize', handleResize);
+      handleResize();
+    }
 
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleVisualViewport);
+      } else {
+        window.removeEventListener('resize', handleResize);
       }
-      window.removeEventListener('resize', handleResize);
     };
   }, [keyboardHeight]);
 

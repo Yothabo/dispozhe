@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaClock, FaTimes } from 'react-icons/fa'
+import { FaClock, FaTimes, FaSpinner } from 'react-icons/fa'
 
 interface DurationSelectorProps {
   onSelect: (minutes: number) => void
@@ -8,6 +8,8 @@ interface DurationSelectorProps {
 
 const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }) => {
   const [customMinutes, setCustomMinutes] = useState<string>('')
+  const [loadingMinutes, setLoadingMinutes] = useState<number | null>(null)
+  const [customLoading, setCustomLoading] = useState(false)
   
   const durations = [
     { minutes: 5, display: '05' },
@@ -23,10 +25,24 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }
     }
   }
 
-  const handleCustomSelect = () => {
+  const handleSelect = async (minutes: number) => {
+    setLoadingMinutes(minutes)
+    try {
+      await onSelect(minutes)
+    } finally {
+      setLoadingMinutes(null)
+    }
+  }
+
+  const handleCustomSelect = async () => {
     const minutes = parseInt(customMinutes)
     if (minutes && minutes > 0 && minutes <= 60) {
-      onSelect(minutes)
+      setCustomLoading(true)
+      try {
+        await onSelect(minutes)
+      } finally {
+        setCustomLoading(false)
+      }
     }
   }
 
@@ -36,6 +52,7 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }
         <button
           onClick={onClose}
           className="absolute right-4 top-4 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10"
+          disabled={loadingMinutes !== null || customLoading}
         >
           <FaTimes className="w-4 h-4 text-grey" />
         </button>
@@ -54,16 +71,33 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }
           {durations.map((duration) => (
             <button
               key={duration.minutes}
-              onClick={() => onSelect(duration.minutes)}
-              className="group p-4 bg-white/5 rounded-xl hover:bg-sky/10 transition-colors border border-white/10 hover:border-sky/20 flex flex-col items-center justify-center"
+              onClick={() => handleSelect(duration.minutes)}
+              disabled={loadingMinutes !== null || customLoading}
+              className={`
+                group p-4 rounded-xl flex flex-col items-center justify-center transition-all
+                ${loadingMinutes === duration.minutes 
+                  ? 'bg-sky/20 border border-sky/40' 
+                  : 'bg-white/5 border border-white/10 hover:bg-sky/10 hover:border-sky/20'
+                }
+                ${(loadingMinutes !== null || customLoading) && loadingMinutes !== duration.minutes ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
               style={{ height: '96px' }}
             >
-              <div className="font-goldman text-3xl font-bold text-grey mb-1 tracking-wider">
-                {duration.display}
-              </div>
-              <div className="text-xs text-grey/50 font-light">
-                {duration.minutes} minutes
-              </div>
+              {loadingMinutes === duration.minutes ? (
+                <>
+                  <FaSpinner className="w-8 h-8 text-sky animate-spin mb-2" />
+                  <span className="text-xs text-sky font-light">Creating...</span>
+                </>
+              ) : (
+                <>
+                  <div className="font-goldman text-3xl font-bold text-grey mb-1 tracking-wider">
+                    {duration.display}
+                  </div>
+                  <div className="text-xs text-grey/50 font-light">
+                    {duration.minutes} minutes
+                  </div>
+                </>
+              )}
             </button>
           ))}
         </div>
@@ -84,17 +118,18 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }
               value={customMinutes}
               onChange={handleCustomChange}
               placeholder="max 60"
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-center font-goldman text-xl font-bold focus:outline-none focus:border-sky/50 placeholder:text-grey/30 placeholder:text-sm placeholder:font-light placeholder:tracking-normal"
+              disabled={loadingMinutes !== null || customLoading}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-center font-goldman text-xl font-bold focus:outline-none focus:border-sky/50 placeholder:text-grey/30 disabled:opacity-50"
               style={{ height: '56px' }}
             />
           </div>
           <button
             onClick={handleCustomSelect}
-            disabled={!customMinutes || parseInt(customMinutes) <= 0 || parseInt(customMinutes) > 60}
-            className="px-6 py-3 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors disabled:opacity-50 flex items-center justify-center duration-action-button"
+            disabled={!customMinutes || parseInt(customMinutes) <= 0 || parseInt(customMinutes) > 60 || loadingMinutes !== null || customLoading}
+            className="px-6 py-3 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors disabled:opacity-50 flex items-center justify-center"
             style={{ height: '56px' }}
           >
-            Set
+            {customLoading ? <FaSpinner className="w-5 h-5 animate-spin" /> : 'Set'}
           </button>
         </div>
 

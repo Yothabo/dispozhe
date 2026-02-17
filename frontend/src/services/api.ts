@@ -32,7 +32,7 @@ export interface CodeJoinResponse {
   status: string;
 }
 
-class ChatllyAPI {
+class DrifllyAPI {
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
@@ -141,5 +141,5 @@ class ChatllyAPI {
   }
 }
 
-export const api = new ChatllyAPI();
+export const api = new DrifllyAPI();
 export default api;

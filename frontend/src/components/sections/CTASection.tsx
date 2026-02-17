@@ -10,6 +10,15 @@ const CTASection: React.FC<CTASectionProps> = ({ onStartChat }) => {
     <section className="w-full py-16 sm:py-20 lg:py-28">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-8">
         <div className="text-center max-w-4xl mx-auto">
+          {/* Logo above heading with more space */}
+          <div className="flex justify-center mb-8">
+            <img 
+              src="/driflly.png" 
+              alt="Driflly logo" 
+              className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 object-contain"
+            />
+          </div>
+          
           <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-white mb-4 sm:mb-6">
             Ready to disappear?
           </h2>

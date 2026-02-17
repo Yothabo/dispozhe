@@ -4,24 +4,24 @@ const DisclaimerContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Please read this disclaimer carefully before using Chatlly.
+        Please read this disclaimer carefully before using Driflly.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">1. No Endorsement</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly provides a platform for private communication. We do not endorse or guarantee the accuracy or reliability of any content transmitted through the service.
+          Driflly provides a platform for private communication. We do not endorse or guarantee the accuracy or reliability of any content transmitted through the service.
         </p>
       </div>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">2. No Records</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly does not maintain records of conversations. Upon session expiration or termination, all associated data is permanently deleted and cannot be retrieved.
+          Driflly does not maintain records of conversations. Upon session expiration or termination, all associated data is permanently deleted and cannot be retrieved.
         </p>
       </div>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">3. No User Control</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly does not verify user identities or control user behavior. Users are advised to exercise judgment when communicating with others.
+          Driflly does not verify user identities or control user behavior. Users are advised to exercise judgment when communicating with others.
         </p>
       </div>
       <div className="space-y-4">
@@ -33,7 +33,7 @@ const DisclaimerContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">5. Limitation of Liability</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly shall not be liable for damages arising out of or in connection with use of the service.
+          Driflly shall not be liable for damages arising out of or in connection with use of the service.
         </p>
       </div>
       <div className="space-y-4">

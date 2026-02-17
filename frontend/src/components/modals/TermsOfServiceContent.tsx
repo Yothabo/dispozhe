@@ -4,30 +4,30 @@ const TermsOfServiceContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        By accessing or using Chatlly, you agree to these Terms of Service.
+        By accessing or using Driflly, you agree to these Terms of Service.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">1. Service Description</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly provides ephemeral, encrypted messaging rooms that expire after a predetermined time or upon manual termination. The service is provided "as is" without warranties.
+          Driflly provides ephemeral, encrypted messaging rooms that expire after a predetermined time or upon manual termination. The service is provided "as is" without warranties.
         </p>
       </div>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">2. User Responsibility</h4>
         <p className="text-sm leading-relaxed">
-          Users are responsible for the content they transmit through Chatlly. The service may not be used for unlawful purposes or to transmit material that violates applicable laws.
+          Users are responsible for the content they transmit through Driflly. The service may not be used for unlawful purposes or to transmit material that violates applicable laws.
         </p>
       </div>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">3. Content Liability</h4>
         <p className="text-sm leading-relaxed">
-          Chatlly does not moderate or monitor user communications. The service is not responsible for the content, accuracy, or nature of messages exchanged.
+          Driflly does not moderate or monitor user communications. The service is not responsible for the content, accuracy, or nature of messages exchanged.
         </p>
       </div>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">4. Limitation of Liability</h4>
         <p className="text-sm leading-relaxed">
-          To the extent permitted by law, Chatlly and its operators shall not be liable for damages arising from or related to use of the service.
+          To the extent permitted by law, Driflly and its operators shall not be liable for damages arising from or related to use of the service.
         </p>
       </div>
       <div className="space-y-4">

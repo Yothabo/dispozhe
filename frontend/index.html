@@ -3,13 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatlly - Secure Temporary Chats</title>
+
+    <!-- Primary Meta Tags - Main Site -->
+    <title>Driflly | Conversations that vanish</title>
+    <meta name="title" content="Driflly | Conversations that vanish">
+    <meta name="description" content="Chat rooms with no eyes and no ears. They don't watch, record, or store anything. They open when you join, fade when you leave, and nothing follows you out.">
+    <meta name="keywords" content="private chat, encrypted messaging, ephemeral messages, secure communication, temporary chat, disappearing messages">
+    <meta name="author" content="Driflly">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook - Main Site -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://Driflly.netlify.app/">
+    <meta property="og:title" content="Driflly | Conversations that vanish">
+    <meta property="og:description" content="Chat rooms with no eyes and no ears. They don't watch, record, or store anything. They open when you join, fade when you leave, and nothing follows you out.">
+    <meta property="og:image" content="https://Driflly.netlify.app/og-main.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Driflly">
+
+    <!-- Twitter - Main Site -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://Driflly.netlify.app/">
+    <meta property="twitter:title" content="Driflly | Conversations that vanish">
+    <meta property="twitter:description" content="Chat rooms with no eyes and no ears. They don't watch, record, or store anything. They open when you join, fade when you leave, and nothing follows you out.">
+    <meta property="twitter:image" content="https://Driflly.netlify.app/og-main.png">
+
+    <!-- Script to update meta tags for invite links ONLY -->
+    <script>
+      (function() {
+        // Check if this is a chat invite link (contains /c/ in path)
+        if (window.location.pathname.includes('/c/')) {
+          // Extract session ID for more personalized invite
+          const sessionId = window.location.pathname.split('/')[2] || '';
+          
+          // Update title for invite
+          document.title = 'Private Chat Invitation';
+          
+          // Update meta tags for invite
+          document.querySelector('meta[name="title"]').setAttribute('content', 'Private Chat Invitation');
+          document.querySelector('meta[name="description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
+          
+          // Update Open Graph tags for invite
+          document.querySelector('meta[property="og:title"]').setAttribute('content', 'Private Chat Invitation');
+          document.querySelector('meta[property="og:description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
+          document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://Driflly.netlify.app/og-chat.png');
+          document.querySelector('meta[property="og:url"]').setAttribute('content', window.location.href);
+          
+          // Update Twitter tags for invite
+          document.querySelector('meta[name="twitter:title"]').setAttribute('content', 'Private Chat Invitation');
+          document.querySelector('meta[name="twitter:description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
+          document.querySelector('meta[name="twitter:image"]').setAttribute('content', 'https://Driflly.netlify.app/og-chat.png');
+        }
+      })();
+    </script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/Driflly.png">
+    <link rel="apple-touch-icon" href="/Driflly.png">
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Goldman:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-<script src="/debug.js"></script>
 </head>
 <body>
     <div id="root"></div>
