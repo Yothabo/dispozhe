@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
+  private maxReconnectAttempts = 5;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -21,8 +21,8 @@ class WebSocketService {
 
   // Get the correct WebSocket URL based on environment
   private getWebSocketUrl(sessionId: string): string {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    // Convert http:// to ws:// and https:// to wss://
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://driflly-backend.onrender.com';
+    // Convert https:// to wss:// and http:// to ws://
     const wsUrl = apiUrl.replace(/^http/, 'ws');
     return `${wsUrl}/ws/${sessionId}`;
   }
@@ -39,7 +39,6 @@ class WebSocketService {
 
     if (this.ws?.readyState === WebSocket.OPEN && this.currentSessionId === sessionId) {
       console.log('[WebSocket] Already connected');
-      // Send any queued messages
       this.flushMessageQueue();
       return Promise.resolve();
     }
@@ -67,7 +66,6 @@ class WebSocketService {
           this.connectionInProgress = false;
           this.reconnectAttempts = 0;
           this.startHeartbeat();
-          // Send any queued messages
           this.flushMessageQueue();
           resolve();
         };
@@ -78,7 +76,6 @@ class WebSocketService {
             console.log('[WebSocket] Received:', data.type, data);
 
             if (data.type === 'ping') {
-              // Respond to ping with pong
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
               return;
             }
@@ -97,7 +94,6 @@ class WebSocketService {
               this.terminating = true;
             }
 
-            // Forward message to all handlers
             this.messageHandlers.forEach(handler => {
               try {
                 handler(data);
@@ -213,7 +209,6 @@ class WebSocketService {
   }
 
   sendMessage(message: any): boolean {
-    // Log all outgoing messages for debugging
     console.log('[WebSocket] Sending:', message.type, message);
 
     if (this.terminating || this.isTerminated) {
@@ -227,13 +222,11 @@ class WebSocketService {
         return true;
       } catch (err) {
         console.error('[WebSocket] Send error:', err);
-        // Queue the message for retry
         this.messageQueue.push(message);
         return false;
       }
     } else {
       console.warn('[WebSocket] Not connected, queueing message');
-      // Queue the message for when connection is established
       this.messageQueue.push(message);
       return false;
     }

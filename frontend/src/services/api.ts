@@ -1,5 +1,5 @@
 // Use environment variable with fallback for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://driflly-backend.onrender.com';
 
 export interface CreateSessionRequest {
   duration: number;
@@ -32,7 +32,7 @@ export interface CodeJoinResponse {
   status: string;
 }
 
-class DrifllyAPI {
+class ChatllyAPI {
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
@@ -141,5 +141,5 @@ class DrifllyAPI {
   }
 }
 
-export const api = new DrifllyAPI();
+export const api = new ChatllyAPI();
 export default api;
