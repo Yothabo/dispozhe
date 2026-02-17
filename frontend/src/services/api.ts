@@ -1,5 +1,5 @@
 // Use environment variable with fallback for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://driflly-backend.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
 
 export interface CreateSessionRequest {
   duration: number;

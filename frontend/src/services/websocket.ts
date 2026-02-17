@@ -21,7 +21,7 @@ class WebSocketService {
 
   // Get the correct WebSocket URL based on environment
   private getWebSocketUrl(sessionId: string): string {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://driflly-backend.onrender.com';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
     // Convert https:// to wss:// and http:// to ws://
     const wsUrl = apiUrl.replace(/^http/, 'ws');
     return `${wsUrl}/ws/${sessionId}`;
