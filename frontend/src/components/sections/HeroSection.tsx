@@ -26,18 +26,18 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               Chat rooms with no eyes and no ears. They don't watch, record, or store anything. 
               They open when you join, fade when you leave, and nothing follows you out.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 mb-10">
+            <div className="flex flex-row flex-wrap gap-3 sm:gap-8 mb-10">
               <div className="flex items-center gap-2 text-grey">
-                <FaClock className="text-sky text-sm" />
-                <span className="text-sm font-light">Auto-destruct timer</span>
+                <FaClock className="text-sky text-xs sm:text-sm" />
+                <span className="text-xs sm:text-sm font-light">Auto-destruct</span>
               </div>
               <div className="flex items-center gap-2 text-grey">
-                <FaTrash className="text-sky text-sm" />
-                <span className="text-sm font-light">Manual terminate</span>
+                <FaTrash className="text-sky text-xs sm:text-sm" />
+                <span className="text-xs sm:text-sm font-light">Manual</span>
               </div>
               <div className="flex items-center gap-2 text-grey">
-                <FaShieldAlt className="text-sky text-sm" />
-                <span className="text-sm font-light">Zero personal data</span>
+                <FaShieldAlt className="text-sky text-xs sm:text-sm" />
+                <span className="text-xs sm:text-sm font-light">Zero data</span>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -57,7 +57,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               Free, ephemeral, open source
             </p>
           </div>
-          <div className="hidden lg:block relative">
+          <div className="lg:block relative">
             <div className="glass rounded-3xl p-8 border border-sky/20">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
