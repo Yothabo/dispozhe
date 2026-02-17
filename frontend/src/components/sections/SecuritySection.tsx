@@ -11,7 +11,7 @@ const SecuritySection: React.FC = () => {
             Here's exactly what we do.
           </h2>
         </div>
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           <div className="glass rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 w-full">
             <div className="flex items-center gap-4 mb-6 sm:mb-8">
               <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">What we do not do</h3>

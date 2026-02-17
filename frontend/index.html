@@ -12,55 +12,55 @@
     <meta name="author" content="Driflly">
     <meta name="robots" content="index, follow">
 
-    <!-- Open Graph / Facebook - Main Site -->
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0A192F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Driflly">
+    <link rel="apple-touch-icon" href="/driflly.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/driflly.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/driflly.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/driflly.png">
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://Driflly.netlify.app/">
+    <meta property="og:url" content="https://driflly.vercel.app/">
     <meta property="og:title" content="Driflly | Conversations that vanish">
     <meta property="og:description" content="Chat rooms with no eyes and no ears. They don't watch, record, or store anything. They open when you join, fade when you leave, and nothing follows you out.">
-    <meta property="og:image" content="https://Driflly.netlify.app/og-main.png">
+    <meta property="og:image" content="https://driflly.vercel.app/og-main.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="Driflly">
 
-    <!-- Twitter - Main Site -->
+    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://Driflly.netlify.app/">
+    <meta property="twitter:url" content="https://driflly.vercel.app/">
     <meta property="twitter:title" content="Driflly | Conversations that vanish">
     <meta property="twitter:description" content="Chat rooms with no eyes and no ears. They don't watch, record, or store anything. They open when you join, fade when you leave, and nothing follows you out.">
-    <meta property="twitter:image" content="https://Driflly.netlify.app/og-main.png">
+    <meta property="twitter:image" content="https://driflly.vercel.app/og-main.png">
 
-    <!-- Script to update meta tags for invite links ONLY -->
+    <!-- Script to update meta tags for invite links -->
     <script>
       (function() {
-        // Check if this is a chat invite link (contains /c/ in path)
         if (window.location.pathname.includes('/c/')) {
-          // Extract session ID for more personalized invite
           const sessionId = window.location.pathname.split('/')[2] || '';
-          
-          // Update title for invite
           document.title = 'Private Chat Invitation';
-          
-          // Update meta tags for invite
           document.querySelector('meta[name="title"]').setAttribute('content', 'Private Chat Invitation');
           document.querySelector('meta[name="description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
-          
-          // Update Open Graph tags for invite
           document.querySelector('meta[property="og:title"]').setAttribute('content', 'Private Chat Invitation');
           document.querySelector('meta[property="og:description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
-          document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://Driflly.netlify.app/og-chat.png');
+          document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://driflly.vercel.app/og-chat.png');
           document.querySelector('meta[property="og:url"]').setAttribute('content', window.location.href);
-          
-          // Update Twitter tags for invite
           document.querySelector('meta[name="twitter:title"]').setAttribute('content', 'Private Chat Invitation');
           document.querySelector('meta[name="twitter:description"]').setAttribute('content', 'You\'ve been invited to a private, encrypted conversation. Click to join and chat securely — it will disappear when you\'re done.');
-          document.querySelector('meta[name="twitter:image"]').setAttribute('content', 'https://Driflly.netlify.app/og-chat.png');
+          document.querySelector('meta[name="twitter:image"]').setAttribute('content', 'https://driflly.vercel.app/og-chat.png');
         }
       })();
     </script>
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/Driflly.png">
-    <link rel="apple-touch-icon" href="/Driflly.png">
+    <!-- Favicon & Manifest -->
+    <link rel="icon" type="image/png" href="/driflly.png">
+    <link rel="manifest" href="/manifest.json">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
