@@ -2,14 +2,14 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Hooks
-import { 
-  useChatMessages, 
-  useChatConnection, 
+import {
+  useChatMessages,
+  useChatConnection,
   useChatTermination,
   useChatBackNavigation,
   useFileHandling,
   useChatTimer,
-  useChatTyping 
+  useChatTyping
 } from './hooks';
 import { useChatMessageHandlers } from './hooks/useChatMessageHandlers';
 
@@ -69,12 +69,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const keyboardHeight = useKeyboard();
 
   // Custom hooks
-  const { 
-    messages, 
-    setMessages, 
-    addMessage, 
-    updateMessage, 
-    handleIncomingMessage, 
+  const {
+    messages,
+    setMessages,
+    addMessage,
+    updateMessage,
+    handleIncomingMessage,
     markFileAsViewed,
     processedIds,
     fileChunks,
@@ -129,10 +129,10 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     handleFileViewed,
     isSendingFile: isUploading
   } = useFileHandling(
-    addMessage, 
-    setMessages, 
-    viewedFiles, 
-    mountedRef, 
+    addMessage,
+    setMessages,
+    viewedFiles,
+    mountedRef,
     setIsSendingFile,
     () => setShowAttachmentMenu(false)
   );
@@ -215,11 +215,17 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     }
   }, [messages]);
 
+  // Fixed handleSend function with proper Unicode/emoji support
   const handleSend = () => {
     if (!inputText.trim() || !isConnected || isTerminating || otherUserLeft || showSecondUserTermination || timeUp) return;
 
     const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    const encrypted = btoa(inputText);
+    
+    // Proper Unicode handling for emojis
+    const encoder = new TextEncoder();
+    const data = encoder.encode(inputText);
+    const encrypted = btoa(String.fromCharCode(...new Uint8Array(data)));
+    
     const timestamp = Date.now();
 
     addMessage({
@@ -231,16 +237,17 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     });
 
     setInputText('');
+
     wsService.sendMessage({ type: 'message', data: encrypted, timestamp, id });
     sendTyping(false);
   };
 
   const handleTypingWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleTyping(
-      e, 
-      isTerminating, 
-      otherUserLeft, 
-      showSecondUserTermination, 
+      e,
+      isTerminating,
+      otherUserLeft,
+      showSecondUserTermination,
       timeUp,
       setInputText
     );
@@ -272,9 +279,9 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   if (isTerminating) return <DestroyingSessionView steps={terminationSteps} />;
   if (showSecondUserTermination) return <DestroyingSessionView steps={secondUserSteps} />;
   if (terminationCompleted) return (
-    <SessionDestroyedView 
-      onNewChat={handleNewChat} 
-      onClose={handleClose} 
+    <SessionDestroyedView
+      onNewChat={handleNewChat}
+      onClose={handleClose}
     />
   );
 
@@ -297,7 +304,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
       </div>
 
       {/* Connection Banner */}
-      <ConnectionBanner 
+      <ConnectionBanner
         isConnected={isConnected}
         otherUserLeft={otherUserLeft}
         timeUp={timeUp}
@@ -399,12 +406,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
       />
 
       {/* Hidden file input - only for images now */}
-      <input 
-        ref={imageInputRef} 
-        type="file" 
-        accept="image/*" 
-        onChange={handleFileSelect} 
-        className="hidden" 
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
       />
 
       {/* Media Error Message */}
