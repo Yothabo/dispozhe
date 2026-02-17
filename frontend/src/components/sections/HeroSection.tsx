@@ -57,7 +57,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               Free, ephemeral, open source
             </p>
           </div>
-          <div className="lg:block relative">
+          
+          {/* Chat Preview - Desktop only */}
+          <div className="hidden lg:block relative">
             <div className="glass rounded-3xl p-8 border border-sky/20">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
