@@ -19,7 +19,7 @@ from utils.code_generator import CodeGenerator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BASE_URL = "http://localhost:3000/"
+BASE_URL = "https://driflly.vercel.app/"
 MAX_DURATION = 24 * 60
 
 # In-memory message queue for polling fallback
@@ -41,23 +41,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="dispozhe API", description="Secure temporary chat backend - blind relay only", version="1.0.0", lifespan=lifespan)
 
-# Updated CORS with all necessary origins
+# Comprehensive CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
         "https://dispozhe.netlify.app",
-        "https://dispozhe.onrender.com"
+        "https://driflly.vercel.app",
+        "https://driflly.netlify.app",
+        "https://dispozhe.onrender.com",
+        "https://driflly-backend.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "dispozhe backend"}
+
+@app.get("/")
+async def root():
+    return {"message": "dispozhe backend API", "docs": "/docs", "health": "/health"}
 
 @app.post("/session/create", response_model=SessionResponse)
 async def create_session(request: SessionCreate, db: Session = Depends(get_db)):
