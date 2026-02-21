@@ -42,12 +42,17 @@ async def create_token(user_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
+        # Create or update user when they request a token
+        server_client.update_user({
+            "id": user_id,
+            "name": f"User_{user_id[:4]}",
+            "role": "user"
+        })
+        logger.info(f"User created/updated: {user_id}")
+        
         # Create token
         token = server_client.create_token(user_id, exp_seconds=24*60*60)
         logger.info(f"Token created for user: {user_id}")
-        
-        # Note: Users are created on the fly when they first connect with a valid token
-        # So we don't need to upsert them here
         
         return {"token": token, "user_id": user_id}
     except Exception as e:
@@ -64,7 +69,16 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create channel - users will be auto-created when they connect
+        # Ensure both users exist before creating channel
+        for user_id in [user1_id, user2_id]:
+            server_client.update_user({
+                "id": user_id,
+                "name": f"User_{user_id[:4]}",
+                "role": "user"
+            })
+            logger.info(f"User created/updated for channel: {user_id}")
+
+        # Create channel
         channel = server_client.channel("messaging", session_id, {
             "name": f"Chat Session {session_id}",
             "members": [user1_id, user2_id],
@@ -73,7 +87,7 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
 
         response = await channel.create()
         logger.info(f"Channel created for session: {session_id}")
-        return {"channel_id": channel.id, "response": response}
+        return {"channel_id": channel.id}
     except Exception as e:
         logger.error(f"Channel creation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
