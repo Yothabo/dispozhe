@@ -2,6 +2,7 @@ import os
 import logging
 from fastapi import APIRouter, HTTPException
 from dotenv import load_dotenv
+import asyncio
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -42,7 +43,7 @@ async def create_token(user_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create or update user when they request a token
+        # Create or update user
         server_client.update_user({
             "id": user_id,
             "name": f"User_{user_id[:4]}",
@@ -69,14 +70,21 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Ensure both users exist before creating channel
+        # Create both users first
         for user_id in [user1_id, user2_id]:
-            server_client.update_user({
-                "id": user_id,
-                "name": f"User_{user_id[:4]}",
-                "role": "user"
-            })
-            logger.info(f"User created/updated for channel: {user_id}")
+            try:
+                server_client.update_user({
+                    "id": user_id,
+                    "name": f"User_{user_id[:4]}",
+                    "role": "user"
+                })
+                logger.info(f"User created/updated for channel: {user_id}")
+            except Exception as user_error:
+                logger.error(f"Failed to create user {user_id}: {user_error}")
+                # Continue anyway - the channel creation might still work
+        
+        # Small delay to ensure users are created
+        await asyncio.sleep(0.5)
 
         # Create channel
         channel = server_client.channel("messaging", session_id, {
