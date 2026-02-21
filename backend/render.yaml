@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: dispozhe-backend
+    name: dispozhe
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.0
+      - key: STREAM_API_KEY
+        value: d6f5rvrn4fqn
+      - key: STREAM_API_SECRET
+        value: h8vxsnwugcn4yqf2v6ht9m2t5usrzv6uhcypwe4dweyeeshrmb6usckh6bntn9nb
