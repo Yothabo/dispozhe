@@ -1,4 +1,3 @@
-from routes.stream import router as stream_router
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,10 +18,15 @@ from utils.expiry import ExpiryService
 from utils.websocket_manager import ConnectionManager
 from utils.code_generator import CodeGenerator
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Try to import stream router, but don't fail if not available
+try:
+    from routes.stream import router as stream_router
+    STREAM_ROUTER_AVAILABLE = True
+except ImportError:
+    STREAM_ROUTER_AVAILABLE = False
+    print("Stream router not available")
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://driflly.vercel.app/"
@@ -46,7 +50,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="dispozhe API", version="1.0.0", lifespan=lifespan)
 
-app.include_router(stream_router)
+# Conditionally include stream router if available
+if STREAM_ROUTER_AVAILABLE:
+    app.include_router(stream_router)
+    logger.info("Stream router included")
+else:
+    logger.warning("Stream router not available - chat will use WebSocket fallback")
 
 # CORS configuration
 app.add_middleware(
