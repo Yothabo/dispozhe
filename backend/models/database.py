@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Use SQLite for simplicity - easy to run on Termium
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./chatlly.db")
 
 engine = create_engine(
@@ -25,9 +24,10 @@ class Session(Base):
     expires_at = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
     participant_count = Column(Integer, default=1)
-    status = Column(String, default="waiting")  # waiting, active, expired
+    status = Column(String, default="waiting")  # waiting, active, expired, terminated
     link_active = Column(Boolean, default=True)
-    
+    terminated_at = Column(DateTime, nullable=True)  # Add this column
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -36,10 +36,19 @@ class Session(Base):
             "duration_minutes": self.duration_minutes,
             "participant_count": self.participant_count,
             "status": self.status,
-            "link_active": self.link_active
+            "link_active": self.link_active,
+            "terminated_at": self.terminated_at.isoformat() if self.terminated_at else None
         }
+    
+    def time_left(self) -> int:
+        """Calculate time left in seconds"""
+        if self.status == "terminated":
+            return 0
+        if datetime.utcnow() >= self.expires_at:
+            return 0
+        return int((self.expires_at - datetime.utcnow()).total_seconds())
 
-# Create tables
+# Create tables (this will add the new column)
 Base.metadata.create_all(bind=engine)
 
 def get_db():

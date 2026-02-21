@@ -12,6 +12,7 @@ class SessionResponse(BaseModel):
     link: str
     status: str
     code: Optional[str] = None
+    time_left_seconds: Optional[int] = None
 
 class SessionExtend(BaseModel):
     minutes: int
@@ -20,5 +21,6 @@ class SessionStatus(BaseModel):
     session_id: str
     participant_count: int
     status: str
-    expires_at: Optional[datetime] = None
-    time_left_seconds: Optional[int] = None
+    expires_at: datetime
+    time_left_seconds: int
+    created_at: Optional[datetime] = None
