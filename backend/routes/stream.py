@@ -43,8 +43,8 @@ async def create_token(user_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create or update user
-        server_client.update_user({
+        # Create or update user when they request a token
+        server_client.upsert_user({
             "id": user_id,
             "name": f"User_{user_id[:4]}",
             "role": "user"
@@ -70,30 +70,36 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create both users first
-        for user_id in [user1_id, user2_id]:
-            try:
-                server_client.update_user({
-                    "id": user_id,
-                    "name": f"User_{user_id[:4]}",
-                    "role": "user"
-                })
-                logger.info(f"User created/updated for channel: {user_id}")
-            except Exception as user_error:
-                logger.error(f"Failed to create user {user_id}: {user_error}")
-                # Continue anyway - the channel creation might still work
+        # Create BOTH users before creating the channel
+        # This ensures the second user exists even if they haven't requested a token yet
+        users_to_create = [
+            {
+                "id": user1_id,
+                "name": f"User_{user1_id[:4]}",
+                "role": "user"
+            },
+            {
+                "id": user2_id,
+                "name": f"User_{user2_id[:4]}",
+                "role": "user"
+            }
+        ]
         
-        # Small delay to ensure users are created
+        server_client.upsert_users(users_to_create)
+        logger.info(f"Both users created/updated for channel: {user1_id}, {user2_id}")
+        
+        # Small delay to ensure users are created (sometimes needed with async)
         await asyncio.sleep(0.5)
 
-        # Create channel
+        # Create channel - don't include created_by_id in the data
         channel = server_client.channel("messaging", session_id, {
             "name": f"Chat Session {session_id}",
             "members": [user1_id, user2_id],
-            "created_by_id": user1_id
+            # created_by_id is NOT set here - it's passed to create()
         })
 
-        response = await channel.create()
+        # Pass the creator's user_id to create()
+        response = channel.create(user1_id)
         logger.info(f"Channel created for session: {session_id}")
         return {"channel_id": channel.id}
     except Exception as e:
