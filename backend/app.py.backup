@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import logging
 import json
 import asyncio
+import traceback
 from contextlib import asynccontextmanager
 from collections import defaultdict
 from typing import List, Dict, Optional
@@ -16,7 +17,6 @@ from utils.tokens import generate_session_id
 from utils.expiry import ExpiryService
 from utils.websocket_manager import ConnectionManager
 from utils.code_generator import CodeGenerator
-from utils.timer import SessionTimer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,14 +34,10 @@ async def lifespan(app: FastAPI):
     app.state.manager = ConnectionManager()
     app.state.manager.set_expiry_service(app.state.expiry_service)
     app.state.code_generator = CodeGenerator()
-    app.state.timer = SessionTimer()
     logger.info("Backend started successfully")
     yield
     logger.info("Shutting down backend...")
     app.state.expiry_service.stop()
-    # Cancel all timers
-    for session_id in list(app.state.timer.timers.keys()):
-        app.state.timer.cancel_timer(session_id)
     logger.info("Backend stopped")
 
 app = FastAPI(title="dispozhe API", version="1.0.0", lifespan=lifespan)
@@ -188,81 +184,13 @@ async def join_session(session_id: str, db: Session = Depends(get_db)):
     session.status = "active"
     session.link_active = False
     db.commit()
-    
+
     logger.info(f"Second participant joined session: {session_id}")
-    
-    # Start the backend timer when session becomes active
-    async def on_session_expire(sid: str):
-        logger.info(f"Session {sid} timer expired, notifying participants")
-        # Notify participants via WebSocket
-        await app.state.manager.broadcast_to_session(
-            sid,
-            json.dumps({
-                "type": "session_expired",
-                "message": "Chat duration has ended",
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            exclude=None
-        )
-    
-    # Start timer in background
-    asyncio.create_task(
-        app.state.timer.start_timer(session_id, session.duration_minutes, on_session_expire)
-    )
 
     return {
         "session_id": session.id,
         "status": "active",
         "message": "Joined successfully"
-    }
-
-@app.post("/session/{session_id}/extend")
-async def extend_session(session_id: str, request: SessionExtend, db: Session = Depends(get_db)):
-    session = db.query(DBSession).filter(DBSession.id == session_id).first()
-
-    if not session:
-        raise HTTPException(404, "Session not found")
-
-    if session.status != "active":
-        raise HTTPException(400, "Cannot extend - session is not active")
-
-    max_expiry = datetime.utcnow() + timedelta(minutes=MAX_DURATION)
-    new_expiry = session.expires_at + timedelta(minutes=request.minutes)
-
-    if new_expiry > max_expiry:
-        session.expires_at = max_expiry
-    else:
-        session.expires_at = new_expiry
-
-    db.commit()
-    logger.info(f"Session extended: {session_id}, +{request.minutes}min")
-    
-    # Restart timer with new duration
-    total_minutes = int((session.expires_at - session.created_at).total_seconds() / 60)
-    
-    async def on_session_expire(sid: str):
-        logger.info(f"Session {sid} timer expired after extension")
-        await app.state.manager.broadcast_to_session(
-            sid,
-            json.dumps({
-                "type": "session_expired",
-                "message": "Chat duration has ended",
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            exclude=None
-        )
-    
-    # Cancel old timer and start new one
-    app.state.timer.cancel_timer(session_id)
-    asyncio.create_task(
-        app.state.timer.start_timer(session_id, total_minutes, on_session_expire)
-    )
-
-    return {
-        "session_id": session.id,
-        "extended_by": request.minutes,
-        "expires_at": session.expires_at,
-        "time_left_seconds": int((session.expires_at - datetime.utcnow()).total_seconds())
     }
 
 @app.delete("/session/{session_id}")
@@ -273,9 +201,6 @@ async def terminate_session(session_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Session not found")
 
     logger.info(f"Termination requested for session {session_id}")
-
-    # Cancel timer
-    app.state.timer.cancel_timer(session_id)
 
     if session_id in message_queue:
         del message_queue[session_id]
@@ -288,11 +213,10 @@ async def terminate_session(session_id: str, db: Session = Depends(get_db)):
     app.state.code_generator.remove_by_session(session_id)
 
     try:
-        session.status = "terminated"
-        session.terminated_at = datetime.utcnow()
+        db.delete(session)
         db.commit()
     except Exception as e:
-        logger.error(f"Error updating session: {e}")
+        logger.error(f"Error deleting session: {e}")
         db.rollback()
         raise HTTPException(500, "Failed to terminate session")
 
@@ -301,24 +225,36 @@ async def terminate_session(session_id: str, db: Session = Depends(get_db)):
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    client_host = websocket.client.host if websocket.client else "unknown"
+    logger.info(f"WebSocket connection attempt from {client_host} for session {session_id}")
+    
     db = SessionLocal()
     try:
         session = db.query(DBSession).filter(DBSession.id == session_id).first()
 
         if not session:
+            logger.warning(f"Session {session_id} not found")
             await websocket.close(code=1008, reason="Session not found")
             return
 
+        logger.info(f"Session {session_id} found, status: {session.status}")
+
         if session.status == "expired" or session.status == "terminated" or datetime.utcnow() > session.expires_at:
+            logger.warning(f"Session {session_id} expired")
             await websocket.close(code=1008, reason="Session expired")
             return
 
+        # Accept connection
+        await websocket.accept()
+        logger.info(f"WebSocket accepted for session {session_id}")
+
+        # Add to manager
         await app.state.manager.connect(websocket, session_id)
         connection_count = app.state.manager.get_connection_count(session_id)
         logger.info(f"WebSocket connected for session {session_id}, total connections: {connection_count}")
 
-        # Send initial time left
-        time_left = session.time_left()
+        # Send connected message
+        time_left = session.time_left() if hasattr(session, 'time_left') else 300
         await websocket.send_text(json.dumps({
             "type": "connected",
             "session_id": session_id,
@@ -328,26 +264,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             "timestamp": datetime.utcnow().isoformat()
         }))
 
-        # Send time updates periodically
-        async def send_time_updates():
+        # Heartbeat to keep connection alive
+        async def heartbeat():
             try:
                 while True:
-                    await asyncio.sleep(5)
-                    if session.status == "active":
-                        time_left = session.time_left()
-                        await app.state.manager.broadcast_to_session(
-                            session_id,
-                            json.dumps({
-                                "type": "time_update",
-                                "time_left": time_left,
-                                "timestamp": datetime.utcnow().isoformat()
-                            }),
-                            exclude=None
-                        )
+                    await asyncio.sleep(25)
+                    await websocket.send_text(json.dumps({
+                        "type": "ping",
+                        "timestamp": datetime.utcnow().isoformat()
+                    }))
             except:
                 pass
 
-        time_update_task = asyncio.create_task(send_time_updates())
+        heartbeat_task = asyncio.create_task(heartbeat())
 
         try:
             while True:
@@ -364,37 +293,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             logger.error(f"WebSocket error: {e}")
             app.state.manager.disconnect(websocket, session_id)
         finally:
-            time_update_task.cancel()
+            heartbeat_task.cancel()
 
+    except Exception as e:
+        logger.error(f"WebSocket endpoint error: {e}")
+        logger.error(traceback.format_exc())
     finally:
         db.close()
-
-@app.post("/admin/cleanup")
-async def admin_cleanup():
-    db = SessionLocal()
-    count = 0
-    try:
-        now = datetime.utcnow()
-        expired = db.query(DBSession).filter(DBSession.expires_at < now, DBSession.status != "terminated").all()
-
-        for session in expired:
-            try:
-                await app.state.manager.terminate_session(session.id)
-            except:
-                pass
-            app.state.code_generator.remove_by_session(session.id)
-            app.state.timer.cancel_timer(session.id)
-            session.status = "expired"
-            count += 1
-
-        db.commit()
-    finally:
-        db.close()
-
-    global message_queue
-    message_queue.clear()
-
-    return {"cleaned": count}
 
 if __name__ == "__main__":
     import uvicorn

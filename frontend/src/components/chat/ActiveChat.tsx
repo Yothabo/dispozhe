@@ -2,9 +2,17 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Hooks
+import useKeyboard from '../../hooks/useKeyboard';
+import wsService from '../../services/websocket';
+import { preventRefresh, disableRefreshKeys } from '../../utils/preventRefresh';
+import { notifyManagement } from '../NotificationCenter';
+
+import ConnectionBanner from './connection/ConnectionBanner';
+import AttachmentMenu from './file/AttachmentMenu';
+import FileViewer from './file/FileViewer';
+import ChatHeader from './header/ChatHeader';
 import {
   useChatMessages,
-  useChatConnection,
   useChatTermination,
   useChatBackNavigation,
   useFileHandling,
@@ -14,22 +22,12 @@ import {
 import { useChatMessageHandlers } from './hooks/useChatMessageHandlers';
 
 // Components
-import ChatHeader from './header/ChatHeader';
+import ChatInputControls from './input/ChatInputControls';
 import MessageContainer from './messages/MessageContainer';
-import AttachmentMenu from './file/AttachmentMenu';
-import FileViewer from './file/FileViewer';
+import TerminationActions from './termination/TerminationActions';
 import TerminationModal from './termination/TerminationModal';
 import DestroyingSessionView from './termination/views/DestroyingSessionView';
 import SessionDestroyedView from './termination/views/SessionDestroyedView';
-import ConnectionBanner from './connection/ConnectionBanner';
-import ChatInputControls from './input/ChatInputControls';
-import TerminationActions from './termination/TerminationActions';
-
-// Utils
-import useKeyboard from '../../hooks/useKeyboard';
-import wsService from '../../services/websocket';
-import { notifyManagement } from '../NotificationCenter';
-import { preventRefresh, disableRefreshKeys } from '../../utils/preventRefresh';
 
 // Types
 import { Message } from './types';
@@ -39,15 +37,13 @@ interface ActiveChatProps {
   duration: number;
   encryptionKey: string;
   onTerminate: () => void;
-  onCreateNew?: () => void;
 }
 
 const ActiveChat: React.FC<ActiveChatProps> = ({
   sessionId,
   duration,
   encryptionKey,
-  onTerminate,
-  onCreateNew
+  onTerminate
 }) => {
   const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
@@ -55,6 +51,8 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const [isSendingFile, setIsSendingFile] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [participantCount, setParticipantCount] = useState(1);
+  const [sessionActive, setSessionActive] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -63,8 +61,10 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const mountedRef = useRef(true);
   const animationTimeouts = useRef<NodeJS.Timeout[]>([]);
   const handlerRegistered = useRef<boolean>(false);
-  const terminationMessageShown = useRef<boolean>(false);
-  const timeUpMessageShown = useRef<boolean>(false);
+  const connectionEstablished = useRef<boolean>(false);
+  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const statusPollInterval = useRef<NodeJS.Timeout | null>(null);
+  const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
 
   const keyboardHeight = useKeyboard();
 
@@ -74,23 +74,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     setMessages,
     addMessage,
     updateMessage,
-    handleIncomingMessage,
-    markFileAsViewed,
     processedIds,
-    fileChunks,
     viewedFiles
   } = useChatMessages(sessionId);
 
-  const { isConnected: wsConnected } = useChatConnection(sessionId, () => {});
-
-  useEffect(() => {
-    setIsConnected(wsConnected);
-  }, [wsConnected]);
-
   const {
     otherUserTyping,
-    setOtherUserTyping,
-    lastTypingSent,
     typingTimeoutRef,
     sendTyping,
     handleTyping,
@@ -151,12 +140,124 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     handleTypingIndicator
   );
 
+  // Poll session status to detect when second user joins
+  useEffect(() => {
+    if (!sessionId || terminationCompleted || showSecondUserTermination) return;
+
+    console.log(`[${connectionId.current}] Starting status polling`);
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/session/${sessionId}/status`);
+        const data = await response.json();
+        
+        setParticipantCount(data.participant_count);
+        setSessionActive(data.status === 'active');
+        
+        if (data.status === 'active' && data.participant_count === 2) {
+          console.log(`[${connectionId.current}] 🎉 Second user joined!`);
+        }
+        
+        if (data.status === 'expired' || data.status === 'terminated') {
+          console.log(`[${connectionId.current}] Session ended:`, data.status);
+          handleTimeUpMessage();
+        }
+      } catch (err) {
+        console.error(`[${connectionId.current}] Status poll failed:`, err);
+      }
+    };
+
+    pollStatus();
+    statusPollInterval.current = setInterval(pollStatus, 2000);
+
+    return () => {
+      if (statusPollInterval.current) {
+        clearInterval(statusPollInterval.current);
+        statusPollInterval.current = null;
+      }
+    };
+  }, [sessionId, terminationCompleted, showSecondUserTermination, handleTimeUpMessage]);
+
+  // Single connection attempt - this runs ONCE per component lifecycle
+  useEffect(() => {
+    // Prevent multiple connection attempts
+    if (connectionEstablished.current || isTerminating || terminationCompleted || showSecondUserTermination) {
+      console.log(`[${connectionId.current}] Connection already established or component terminating`);
+      return;
+    }
+
+    console.log(`[${connectionId.current}] 🔌 Connecting to session:`, sessionId);
+    connectionEstablished.current = true;
+
+    const connect = async () => {
+      try {
+        await wsService.connect(sessionId);
+        if (mountedRef.current) {
+          setIsConnected(true);
+          console.log(`[${connectionId.current}] ✅ WebSocket connected successfully`);
+        }
+      } catch (err) {
+        console.error(`[${connectionId.current}] ❌ WebSocket connection failed:`, err);
+        connectionEstablished.current = false;
+        
+        // Retry after delay
+        if (mountedRef.current && !reconnectTimer.current) {
+          console.log(`[${connectionId.current}] Scheduling reconnect...`);
+          reconnectTimer.current = setTimeout(() => {
+            console.log(`[${connectionId.current}] Reconnecting...`);
+            reconnectTimer.current = null;
+            connectionEstablished.current = false;
+            // The useEffect will run again because connectionEstablished is false
+          }, 3000);
+        }
+      }
+    };
+
+    connect();
+
+    return () => {
+      console.log(`[${connectionId.current}] 🧹 Cleanup - DO NOT disconnect WebSocket here`);
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      // DO NOT disconnect here - let the service handle it
+    };
+  }, [sessionId, isTerminating, terminationCompleted, showSecondUserTermination]);
+
+  // Register message handler once
+  useEffect(() => {
+    if (!handlerRegistered.current && !isTerminating && !terminationCompleted && !showSecondUserTermination) {
+      console.log(`[${connectionId.current}] Adding message handler`);
+      wsService.addMessageHandler(handleMessage);
+      handlerRegistered.current = true;
+    }
+    return () => {
+      if (handlerRegistered.current) {
+        console.log(`[${connectionId.current}] Removing message handler`);
+        wsService.removeMessageHandler(handleMessage);
+        handlerRegistered.current = false;
+      }
+    };
+  }, [handleMessage, isTerminating, terminationCompleted, showSecondUserTermination]);
+
+  // Monitor connection status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const connected = wsService.isConnected();
+      if (connected !== isConnected) {
+        console.log(`[${connectionId.current}] Connection status changed:`, connected);
+        setIsConnected(connected);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isConnected]);
+
   // Prevent refresh during active chat
   useEffect(() => {
     if (!terminationCompleted && !showSecondUserTermination && !isTerminating) {
-      const cleanupRefresh = preventRefresh("Refreshing will disconnect you from the chat. Are you sure?");
+      const cleanupRefresh = preventRefresh();
       const cleanupKeys = disableRefreshKeys();
-
       return () => {
         cleanupRefresh();
         cleanupKeys();
@@ -164,68 +265,50 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     }
   }, [terminationCompleted, showSecondUserTermination, isTerminating]);
 
-  // Save messages to sessionStorage
+  // Save messages to sessionStorage (debounced)
   useEffect(() => {
-    if (messages.length > 0 && !isTerminating && !terminationCompleted && !otherUserLeft && !showSecondUserTermination) {
+    if (messages.length === 0 || isTerminating || terminationCompleted || otherUserLeft || showSecondUserTermination) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
       sessionStorage.setItem(`Driflly_messages_${sessionId}`, JSON.stringify(messages));
-    }
+    }, 500);
+
+    return () => clearTimeout(timeout);
   }, [messages, sessionId, isTerminating, terminationCompleted, otherUserLeft, showSecondUserTermination]);
-
-  // Update connection status
-  useEffect(() => {
-    if (terminationCompleted || showSecondUserTermination) return;
-
-    const interval = setInterval(() => {
-      const connected = wsService.isConnected();
-      if (connected !== isConnected) {
-        setIsConnected(connected);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isConnected, terminationCompleted, showSecondUserTermination]);
-
-  // Register message handler
-  useEffect(() => {
-    if (!handlerRegistered.current && !isTerminating && !terminationCompleted && !showSecondUserTermination) {
-      wsService.addMessageHandler(handleMessage);
-      handlerRegistered.current = true;
-    }
-    return () => {
-      if (handlerRegistered.current) {
-        wsService.removeMessageHandler(handleMessage);
-        handlerRegistered.current = false;
-      }
-    };
-  }, [handleMessage, isTerminating, terminationCompleted, showSecondUserTermination]);
 
   // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
+      console.log(`[${connectionId.current}] 💥 Component unmounting`);
       mountedRef.current = false;
       animationTimeouts.current.forEach(clearTimeout);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
   }, [typingTimeoutRef]);
 
-  // Scroll to bottom
+  // Scroll to bottom (debounced)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
+    if (!messagesEndRef.current) return;
+
+    const timeout = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+
+    return () => clearTimeout(timeout);
   }, [messages]);
 
-  // Fixed handleSend function with proper Unicode/emoji support
   const handleSend = () => {
     if (!inputText.trim() || !isConnected || isTerminating || otherUserLeft || showSecondUserTermination || timeUp) return;
 
-    const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    
-    // Proper Unicode handling for emojis
+    const id = crypto.randomUUID();
     const encoder = new TextEncoder();
     const data = encoder.encode(inputText);
     const encrypted = btoa(String.fromCharCode(...new Uint8Array(data)));
-    
     const timestamp = Date.now();
 
     addMessage({
@@ -237,7 +320,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     });
 
     setInputText('');
-
     wsService.sendMessage({ type: 'message', data: encrypted, timestamp, id });
     sendTyping(false);
   };
@@ -271,7 +353,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     navigate('/');
   };
 
-  // Dummy handlers for future file types
   const handleDummyFileSelect = () => {
     notifyManagement('This file type is not yet supported', 'info');
   };
@@ -390,7 +471,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         </div>
       )}
 
-      {/* Attachment Menu - only Image is active */}
+      {/* Attachment Menu */}
       <AttachmentMenu
         isOpen={showAttachmentMenu}
         onSelectImage={() => imageInputRef.current?.click()}
@@ -405,7 +486,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         onClose={() => setShowAttachmentMenu(false)}
       />
 
-      {/* Hidden file input - only for images now */}
+      {/* Hidden file input */}
       <input
         ref={imageInputRef}
         type="file"

@@ -18,14 +18,6 @@ from utils.expiry import ExpiryService
 from utils.websocket_manager import ConnectionManager
 from utils.code_generator import CodeGenerator
 
-# Try to import stream router, but don't fail if not available
-try:
-    from routes.stream import router as stream_router
-    STREAM_ROUTER_AVAILABLE = True
-except ImportError:
-    STREAM_ROUTER_AVAILABLE = False
-    print("Stream router not available")
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -49,13 +41,6 @@ async def lifespan(app: FastAPI):
     logger.info("Backend stopped")
 
 app = FastAPI(title="dispozhe API", version="1.0.0", lifespan=lifespan)
-
-# Conditionally include stream router if available
-if STREAM_ROUTER_AVAILABLE:
-    app.include_router(stream_router)
-    logger.info("Stream router included")
-else:
-    logger.warning("Stream router not available - chat will use WebSocket fallback")
 
 # CORS configuration
 app.add_middleware(
@@ -296,20 +281,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         try:
             while True:
                 message = await websocket.receive_text()
-                logger.debug(f"Received message from {session_id}: {message[:50]}")
-                
-                # Broadcast to other participants
                 await app.state.manager.broadcast_to_session(
                     session_id,
                     message,
                     exclude=websocket
                 )
         except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected for session {session_id}")
             app.state.manager.disconnect(websocket, session_id)
+            logger.info(f"WebSocket disconnected from session {session_id}")
         except Exception as e:
-            logger.error(f"WebSocket error for session {session_id}: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"WebSocket error: {e}")
             app.state.manager.disconnect(websocket, session_id)
         finally:
             heartbeat_task.cancel()

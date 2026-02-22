@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FaBolt, FaKey, FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 interface HeroSectionProps {
   onStartChat: () => void;

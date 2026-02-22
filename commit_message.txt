@@ -1,0 +1,47 @@
+🚀 Driflly: Major System Overhaul & Stabilization
+
+Backend Improvements:
+- Enhanced WebSocket connection manager with strict 2-participant limit
+- Added comprehensive connection logging with timestamps
+- Fixed WebSocket endpoint to properly accept connections before validation
+- Improved error handling for WebSocket disconnections
+- Updated CORS configuration for better security
+- Removed problematic Stream Chat integration
+- Added connection duration tracking
+- Implemented heartbeat mechanism (25s ping/pong)
+
+Frontend Architecture:
+- Simplified WebSocket service to prevent duplicate connections
+- Added connection ID tracking to debug multiple connections
+- Improved ActiveChat component with better lifecycle management
+- Created dedicated SimpleChat component for testing
+- Added ErrorBoundary for better error handling
+- Implemented NotFoundPage for 404 routes
+- Optimized chunk splitting in Vite config (1.36MB → split chunks)
+- Removed unused hooks (useKeyboardHeight, useStableState, etc.)
+
+Testing & Debugging:
+- Added comprehensive WebSocket test suite with wscat
+- Created test dashboard for isolated component testing
+- Added WebSocket debug page (ws-debug.html)
+- Implemented full chat flow test page
+- Added messageParser tests with Vitest
+- Created test-connection.js for API verification
+
+Infrastructure:
+- Updated package.json with correct dependencies
+- Added Prettier and Husky for code formatting
+- Created proper TypeScript configuration with global types
+- Updated netlify.toml with proper redirects
+- Added .prettierrc for consistent formatting
+- Created backups directory for safe rollbacks
+
+Documentation:
+- Added comprehensive README updates
+- Created test documentation
+- Added commit message template
+
+This commit represents a complete overhaul of the WebSocket infrastructure,
+resulting in stable, reliable connections with proper participant limits.
+All third-party chat SDKs have been removed in favor of the proven custom
+WebSocket implementation.

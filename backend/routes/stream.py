@@ -43,7 +43,7 @@ async def create_token(user_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create or update user when they request a token
+        # Create or update user
         server_client.upsert_user({
             "id": user_id,
             "name": f"User_{user_id[:4]}",
@@ -70,8 +70,7 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
         raise HTTPException(status_code=503, detail="Stream Chat not available")
 
     try:
-        # Create BOTH users before creating the channel
-        # This ensures the second user exists even if they haven't requested a token yet
+        # Create both users first with proper roles
         users_to_create = [
             {
                 "id": user1_id,
@@ -86,21 +85,31 @@ async def create_channel(session_id: str, user1_id: str, user2_id: str):
         ]
         
         server_client.upsert_users(users_to_create)
-        logger.info(f"Both users created/updated for channel: {user1_id}, {user2_id}")
+        logger.info(f"Both users created/updated: {user1_id}, {user2_id}")
         
-        # Small delay to ensure users are created (sometimes needed with async)
+        # Wait a moment for users to be created
         await asyncio.sleep(0.5)
 
-        # Create channel - don't include created_by_id in the data
-        channel = server_client.channel("messaging", session_id, {
+        # Create channel with proper settings
+        channel_data = {
             "name": f"Chat Session {session_id}",
             "members": [user1_id, user2_id],
-            # created_by_id is NOT set here - it's passed to create()
-        })
-
-        # Pass the creator's user_id to create()
+            "created_by": {"id": user1_id},
+            "auto_translation_enabled": False,
+            "mutes": [],
+            "frozen": False,
+            "blocked": False
+        }
+        
+        channel = server_client.channel("messaging", session_id, channel_data)
+        
+        # Create the channel with the creator
         response = channel.create(user1_id)
-        logger.info(f"Channel created for session: {session_id}")
+        logger.info(f"Channel created successfully: {response['channel']['id']}")
+        
+        # Verify members can access
+        logger.info(f"Channel members: {response['channel']['members']}")
+        
         return {"channel_id": channel.id}
     except Exception as e:
         logger.error(f"Channel creation failed: {e}")

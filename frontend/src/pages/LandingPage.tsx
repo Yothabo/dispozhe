@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   FaBolt,
   FaPlay,
@@ -20,25 +19,26 @@ import {
   FaDatabase,
   FaQrcode
 } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 // Sections
-import HeroSection from '../components/sections/HeroSection';
+import CareersContent from '../components/modals/CareersContent';
+import ContactContent from '../components/modals/ContactContent';
+import DisclaimerContent from '../components/modals/DisclaimerContent';
+import FeaturesContent from '../components/modals/FeaturesContent';
+import HowItWorksContent from '../components/modals/HowItWorksContent';
+import LegalModal from '../components/modals/LegalModal';
+import PrivacyPolicyContent from '../components/modals/PrivacyPolicyContent';
+import SecurityContent from '../components/modals/SecurityContent';
+import TermsOfServiceContent from '../components/modals/TermsOfServiceContent';
 import FeaturesSection from '../components/sections/FeaturesSection';
+import HeroSection from '../components/sections/HeroSection';
 import HowItWorksSection from '../components/sections/HowItWorksSection';
 import SecuritySection from '../components/sections/SecuritySection';
 // import CTASection from '../components/sections/CTASection'; // Disabled
 import Footer from '../components/sections/Footer';
 
 // Modals
-import LegalModal from '../components/modals/LegalModal';
-import PrivacyPolicyContent from '../components/modals/PrivacyPolicyContent';
-import TermsOfServiceContent from '../components/modals/TermsOfServiceContent';
-import DisclaimerContent from '../components/modals/DisclaimerContent';
-import HowItWorksContent from '../components/modals/HowItWorksContent';
-import FeaturesContent from '../components/modals/FeaturesContent';
-import SecurityContent from '../components/modals/SecurityContent';
-import ContactContent from '../components/modals/ContactContent';
-import CareersContent from '../components/modals/CareersContent';
 
 interface LandingPageProps {
   onStartChat: () => void;

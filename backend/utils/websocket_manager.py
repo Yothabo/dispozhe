@@ -18,38 +18,48 @@ class ConnectionManager:
         self.expiry_service = expiry_service
 
     async def connect(self, websocket: WebSocket, session_id: str):
+        # Check if we already have 2 connections for this session
+        current_count = len(self.active_connections.get(session_id, set()))
+        
+        if current_count >= 2:
+            logger.warning(f"Session {session_id} already has {current_count} connections - rejecting new connection")
+            await websocket.close(code=1008, reason="Maximum connections reached")
+            return False
+
         if session_id not in self.active_connections:
             self.active_connections[session_id] = set()
 
         # Check if this websocket is already connected
         if websocket in self.active_connections[session_id]:
             logger.warning(f"Duplicate WebSocket connection detected for session {session_id}")
-            return
+            return False
 
         self.active_connections[session_id].add(websocket)
         self.connection_ids[websocket] = session_id
         self.connection_times[websocket] = datetime.utcnow()
-        
+
         count = len(self.active_connections[session_id])
         logger.info(f"Client connected to session {session_id}. Total: {count}")
 
         if count == 2:
-            logger.info(f"Session {session_id} now has both participants")
+            logger.info(f"🎉 Session {session_id} now has both participants")
+        
+        return True
 
     def disconnect(self, websocket: WebSocket, session_id: str):
         if session_id in self.active_connections:
             if websocket in self.active_connections[session_id]:
                 self.active_connections[session_id].remove(websocket)
-                
+
                 # Calculate connection duration
                 if websocket in self.connection_times:
                     duration = (datetime.utcnow() - self.connection_times[websocket]).total_seconds()
                     logger.info(f"Connection for session {session_id} lasted {duration:.1f} seconds")
                     del self.connection_times[websocket]
-                
+
                 if websocket in self.connection_ids:
                     del self.connection_ids[websocket]
-                    
+
                 remaining = len(self.active_connections[session_id])
                 logger.info(f"Client disconnected from session {session_id}. Remaining: {remaining}")
 
@@ -58,20 +68,22 @@ class ConnectionManager:
                 logger.info(f"Session {session_id} has no more connections")
 
     async def broadcast_to_session(self, session_id: str, message: str, exclude: WebSocket = None):
-        if session_id in self.active_connections:
-            connections = list(self.active_connections[session_id])
-            dead_connections = []
+        if session_id not in self.active_connections:
+            return
 
-            for connection in connections:
-                if connection != exclude:
-                    try:
-                        await connection.send_text(message)
-                    except Exception as e:
-                        logger.error(f"Error broadcasting to session {session_id}: {e}")
-                        dead_connections.append(connection)
+        connections = list(self.active_connections[session_id])
+        dead_connections = []
 
-            for dead in dead_connections:
-                self.disconnect(dead, session_id)
+        for connection in connections:
+            if connection != exclude:
+                try:
+                    await connection.send_text(message)
+                except Exception as e:
+                    logger.error(f"Error broadcasting to session {session_id}: {e}")
+                    dead_connections.append(connection)
+
+        for dead in dead_connections:
+            self.disconnect(dead, session_id)
 
     def get_connection_count(self, session_id: str) -> int:
         return len(self.active_connections.get(session_id, set()))
@@ -111,7 +123,7 @@ class ConnectionManager:
         # Clean up
         if session_id in self.active_connections:
             del self.active_connections[session_id]
-        
+
         for conn in connections:
             if conn in self.connection_ids:
                 del self.connection_ids[conn]

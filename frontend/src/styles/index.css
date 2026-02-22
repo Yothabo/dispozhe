@@ -17,25 +17,6 @@
 }
 
 @layer utilities {
-  @keyframes blob {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    25% {
-      transform: translate(40px, -30px) scale(1.05);
-    }
-    50% {
-      transform: translate(-20px, 30px) scale(0.95);
-    }
-    75% {
-      transform: translate(30px, 20px) scale(1.02);
-    }
-  }
-
-  .animate-blob {
-    animation: blob 25s infinite cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
   .animation-delay-2000 {
     animation-delay: 2s;
   }
@@ -58,19 +39,6 @@
 
   .text-gradient {
     @apply bg-gradient-to-r from-sky to-sky-dark bg-clip-text text-transparent;
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
   }
 }
 
@@ -200,8 +168,8 @@ html, body, #root {
 }
 
 /* Consistent button height for action buttons (excludes footer) */
-.action-button, 
-button.btn-primary, 
+.action-button,
+button.btn-primary,
 button.btn-secondary,
 .duration-action-button {
   height: 56px;

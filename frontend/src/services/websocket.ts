@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 3;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -19,10 +19,8 @@ class WebSocketService {
   private terminating = false;
   private messageQueue: any[] = [];
 
-  // Get the correct WebSocket URL based on environment
   private getWebSocketUrl(sessionId: string): string {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
-    // Convert https:// to wss:// and http:// to ws://
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
     const wsUrl = apiUrl.replace(/^http/, 'ws');
     return `${wsUrl}/ws/${sessionId}`;
   }
@@ -73,8 +71,7 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('[WebSocket] Received:', data.type, data);
-
+            
             if (data.type === 'ping') {
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
               return;
@@ -85,7 +82,7 @@ class WebSocketService {
             }
 
             if (data.type === 'connected') {
-              console.log('[WebSocket] Connected message received with participant count:', data.participant_count);
+              console.log('[WebSocket] Connected message received:', data);
             }
 
             if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
@@ -209,10 +206,7 @@ class WebSocketService {
   }
 
   sendMessage(message: any): boolean {
-    console.log('[WebSocket] Sending:', message.type, message);
-
     if (this.terminating || this.isTerminated) {
-      console.warn('[WebSocket] Cannot send - terminating');
       return false;
     }
 
@@ -234,12 +228,10 @@ class WebSocketService {
 
   addMessageHandler(handler: MessageHandler) {
     this.messageHandlers.add(handler);
-    console.log('[WebSocket] Added message handler, total:', this.messageHandlers.size);
   }
 
   removeMessageHandler(handler: MessageHandler) {
     this.messageHandlers.delete(handler);
-    console.log('[WebSocket] Removed message handler, total:', this.messageHandlers.size);
   }
 
   isConnected(): boolean {
