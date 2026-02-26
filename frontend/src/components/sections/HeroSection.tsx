@@ -1,6 +1,7 @@
-import React from 'react';
-import { FaBolt, FaKey, FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import ModeSelectorModal from '../modals/ModeSelectorModal';
 
 interface HeroSectionProps {
   onStartChat: () => void;
@@ -8,6 +9,17 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
   const navigate = useNavigate();
+  const [showModeSelector, setShowModeSelector] = useState(false);
+
+  const handleStartChat = () => {
+    setShowModeSelector(true);
+  };
+
+  const handleModeSelect = (mode: string) => {
+    if (mode === 'duo') {
+      onStartChat(); // This navigates to duration selector
+    }
+  };
 
   return (
     <section className="w-full min-h-screen flex items-center relative overflow-hidden">
@@ -19,45 +31,42 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               <span className="text-sky text-xs sm:text-sm font-medium tracking-wide">END-TO-END ENCRYPTED</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight mb-6">
-              <span className="text-sky">Driflly</span>,{' '}
-              <span className="text-white">Conversations that vanish</span>
+              <span className="text-sky">Driflly</span>
+              <span className="text-white"> — conversations that vanish</span>
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-grey-light mb-8 leading-relaxed font-light max-w-xl">
-              Chat rooms with no eyes and no ears. They don't watch, record, or store anything. 
-              They open when you join, fade when you leave, and nothing follows you out.
+              Encrypted, ephemeral chat rooms. No data stored. No identity required.
             </p>
             <div className="flex flex-row flex-wrap gap-3 sm:gap-8 mb-10">
               <div className="flex items-center gap-2 text-grey">
                 <FaClock className="text-sky text-xs sm:text-sm" />
-                <span className="text-xs sm:text-sm font-light">Auto-destruct</span>
+                <span className="text-xs sm:text-sm font-light">Time-limited</span>
               </div>
               <div className="flex items-center gap-2 text-grey">
                 <FaTrash className="text-sky text-xs sm:text-sm" />
-                <span className="text-xs sm:text-sm font-light">Manual</span>
+                <span className="text-xs sm:text-sm font-light">Manual termination</span>
               </div>
               <div className="flex items-center gap-2 text-grey">
                 <FaShieldAlt className="text-sky text-xs sm:text-sm" />
-                <span className="text-xs sm:text-sm font-light">Zero data</span>
+                <span className="text-xs sm:text-sm font-light">Zero data retention</span>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button onClick={onStartChat} className="btn-primary w-full sm:w-auto justify-center">
-                <FaBolt className="mr-2" />
-                Start Private Chat
+              <button onClick={handleStartChat} className="btn-primary w-full sm:w-auto justify-center">
+                Start private chat
               </button>
               <button
                 onClick={() => navigate('/code')}
                 className="btn-secondary w-full sm:w-auto justify-center"
               >
-                <FaKey className="mr-2" />
-                Enter Code
+                Join active chat
               </button>
             </div>
             <p className="text-xs text-grey/50 mt-8 font-light">
-              Free, ephemeral, open source
+              Freemium • Ephemeral • Open source
             </p>
           </div>
-          
+
           {/* Chat Preview - Desktop only */}
           <div className="hidden lg:block relative">
             <div className="glass rounded-3xl p-8 border border-sky/20">
@@ -104,7 +113,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
                     <div className="w-1/3 h-1 bg-sky rounded-full"></div>
                   </div>
                   <p className="text-grey/50 text-[10px] mt-2 text-center font-light">
-                    Fades when you leave. Nothing follows you out.
+                    No data stored. No history retained.
                   </p>
                 </div>
               </div>
@@ -114,6 +123,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
           </div>
         </div>
       </div>
+
+      {/* Mode Selector Modal */}
+      <ModeSelectorModal
+        isOpen={showModeSelector}
+        onClose={() => setShowModeSelector(false)}
+        onSelectMode={handleModeSelect}
+      />
     </section>
   );
 };

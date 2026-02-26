@@ -10,7 +10,7 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) => {
   const isMe = message.sender === 'me'
-  
+
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
@@ -39,13 +39,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
       <div className={`max-w-[70%] ${isMe ? 'order-2' : 'order-1'}`}>
         {message.file ? (
           // File message
-          <div 
+          <div
             onClick={() => onViewFile(message)}
             className={`
-              rounded-2xl p-3 cursor-pointer transition-all hover:opacity-90
-              ${isMe 
-                ? 'bg-sky/10 text-white border border-sky/20' 
-                : 'bg-white/5 text-white rounded-bl-none border border-white/10'
+              p-3 cursor-pointer transition-all hover:opacity-90
+              ${isMe
+                ? 'bg-sky/10 text-white border border-sky/20 rounded-2xl rounded-br-none'
+                : 'bg-white/5 text-white border border-white/10 rounded-2xl rounded-bl-none'
               }
             `}
           >
@@ -70,25 +70,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
             )}
           </div>
         ) : (
-          // Text message - simple styling, accent only for status
-          <div 
+          // Text message
+          <div
             className={`
-              rounded-2xl px-4 py-2 break-words
-              ${isMe 
-                ? 'bg-white/5 text-white border border-white/10' 
-                : 'bg-white/5 text-white border border-white/10'
+              px-4 py-2 break-words
+              ${isMe
+                ? 'bg-sky/10 text-white border border-sky/20 rounded-2xl rounded-br-none'
+                : 'bg-white/5 text-white border border-white/10 rounded-2xl rounded-bl-none'
               }
             `}
           >
             <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
           </div>
         )}
-        
-        {/* Timestamp and status - accent color only for ticks */}
+
+        {/* Timestamp and status */}
         <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? 'justify-end' : 'justify-start'}`}>
           <span className="text-grey/50">{formatTime(message.timestamp)}</span>
           {isMe && (
-            <span className="text-sky">
+            <span className="text-sky/70">
               {message.status === 'sending' && '⏳'}
               {message.status === 'sent' && '✓'}
               {message.status === 'delivered' && '✓✓'}

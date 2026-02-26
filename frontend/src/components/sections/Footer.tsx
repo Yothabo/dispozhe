@@ -1,21 +1,28 @@
 import React from 'react';
-import { FaPlay, FaShieldAlt, FaLock, FaBan, FaDatabase, FaEnvelope, FaInstagram, FaFacebook, FaBriefcase } from 'react-icons/fa';
+import { FaPlay, FaShieldAlt, FaLock, FaBan, FaDatabase, FaEnvelope, FaInstagram, FaFacebook, FaBriefcase, FaTh } from 'react-icons/fa';
 
 interface FooterProps {
-  onModalOpen: (modal: 'privacy' | 'terms' | 'disclaimer' | 'how-it-works' | 'features' | 'security' | 'contact' | 'careers') => void;
+  onModalOpen: (modal: 'privacy' | 'terms' | 'disclaimer' | 'how-it-works' | 'features' | 'security' | 'modes' | 'contact' | 'careers') => void;
 }
 
 const Footer: React.FC<FooterProps> = ({ onModalOpen }) => {
   return (
     <footer className="w-full py-12 sm:py-16 border-t border-white/5">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-8">
+        {/* Driflly title */}
+        <div className="mb-8 text-center sm:text-left">
+          <h3 className="text-2xl sm:text-3xl font-black text-white">
+            Driflly <span className="text-sky">— conversations that vanish</span>
+          </h3>
+        </div>
+
         {/* Top row: Paragraph */}
         <div className="mb-10">
           <p className="text-grey text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl font-light">
-            We, as a community of engineers, affirm privacy as an inherent right of every individual. 
-            In all our work, we uphold a duty of clarity, restraint, and respect for personal information. 
-            We establish systems that limit exposure, preserve autonomy, and avoid any practice that compromises 
-            the dignity or security of the user. These principles stand as the foundation upon which all our 
+            We, as a community of engineers, affirm privacy as an inherent right of every individual.
+            In all our work, we uphold a duty of clarity, restraint, and respect for personal information.
+            We establish systems that limit exposure, preserve autonomy, and avoid any practice that compromises
+            the dignity or security of the user. These principles stand as the foundation upon which all our
             efforts are carried out.
           </p>
         </div>
@@ -39,6 +46,11 @@ const Footer: React.FC<FooterProps> = ({ onModalOpen }) => {
               <li>
                 <button onClick={() => onModalOpen('security')} className="footer-link text-sm sm:text-base flex items-center gap-2 w-full text-left">
                   <FaLock className="text-sky text-xs sm:text-sm" /> Security
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onModalOpen('modes')} className="footer-link text-sm sm:text-base flex items-center gap-2 w-full text-left">
+                  <FaTh className="text-sky text-xs sm:text-sm" /> Modes
                 </button>
               </li>
               <li>

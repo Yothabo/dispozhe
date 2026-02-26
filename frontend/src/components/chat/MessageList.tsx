@@ -1,8 +1,6 @@
 import React from 'react';
-
-import MessageBubble from './messages/MessageBubble';
+import MessageContainer from './messages/MessageContainer';
 import { Message } from './types';
-import TypingIndicator from './TypingIndicator';
 
 interface MessageListProps {
   messages: Message[];
@@ -11,6 +9,9 @@ interface MessageListProps {
   timeUp: boolean;
   onViewFile: (message: Message) => void;
   messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesContainerRef: React.RefObject<HTMLDivElement>;
+  style: React.CSSProperties;
+  className?: string;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -19,30 +20,27 @@ const MessageList: React.FC<MessageListProps> = ({
   otherUserLeft,
   timeUp,
   onViewFile,
-  messagesEndRef
+  messagesEndRef,
+  messagesContainerRef,
+  style,
+  className
 }) => {
   return (
-    <div className="max-w-4xl mx-auto space-y-3">
-      {messages.map((m) => {
-        if (m.sender === 'system') {
-          return (
-            <div key={m.id} className="flex justify-center">
-              <div className="bg-white/5 px-4 py-2 rounded-full">
-                <p className="text-xs text-grey">{m.text}</p>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            onViewFile={onViewFile}
-          />
-        );
-      })}
-      {otherUserTyping && !otherUserLeft && !timeUp && <TypingIndicator />}
-      <div ref={messagesEndRef} />
+    <div
+      ref={messagesContainerRef}
+      style={style}
+      className={className}
+    >
+      <div className="max-w-4xl mx-auto">
+        <MessageContainer
+          messages={messages}
+          otherUserTyping={otherUserTyping}
+          otherUserLeft={otherUserLeft}
+          timeUp={timeUp}
+          onViewFile={onViewFile}
+          messagesEndRef={messagesEndRef}
+        />
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Hooks
@@ -6,23 +6,16 @@ import useKeyboard from '../../hooks/useKeyboard';
 import wsService from '../../services/websocket';
 import { preventRefresh, disableRefreshKeys } from '../../utils/preventRefresh';
 import { notifyManagement } from '../NotificationCenter';
-
-import ConnectionBanner from './connection/ConnectionBanner';
-import AttachmentMenu from './file/AttachmentMenu';
-import FileViewer from './file/FileViewer';
-import ChatHeader from './header/ChatHeader';
-import {
-  useChatMessages,
-  useChatTermination,
-  useChatBackNavigation,
-  useFileHandling,
-  useChatTimer,
-  useChatTyping
-} from './hooks';
+import { useChatMessages, useChatTermination, useChatBackNavigation, useFileHandling, useChatTimer, useChatTyping } from './hooks';
 import { useChatMessageHandlers } from './hooks/useChatMessageHandlers';
+import { useWebSocketConnection } from './hooks/useWebSocketConnection';
+import { useSessionPolling } from './hooks/useSessionPolling';
+import { useMessageHandler } from './hooks/useMessageHandler';
 
 // Components
-import ChatInputControls from './input/ChatInputControls';
+import ChatHeader from './header/ChatHeader';
+import AttachmentMenu from './file/AttachmentMenu';
+import FileViewer from './file/FileViewer';
 import MessageContainer from './messages/MessageContainer';
 import TerminationActions from './termination/TerminationActions';
 import TerminationModal from './termination/TerminationModal';
@@ -59,11 +52,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
-  const animationTimeouts = useRef<NodeJS.Timeout[]>([]);
-  const handlerRegistered = useRef<boolean>(false);
-  const connectionEstablished = useRef<boolean>(false);
-  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
-  const statusPollInterval = useRef<NodeJS.Timeout | null>(null);
   const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
 
   const keyboardHeight = useKeyboard();
@@ -128,7 +116,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
 
   useChatBackNavigation(setShowTerminateModal, terminationCompleted);
 
-  // Message handlers
   const { handleMessage } = useChatMessageHandlers(
     addMessage,
     updateMessage,
@@ -140,120 +127,45 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     handleTypingIndicator
   );
 
-  // Poll session status to detect when second user joins
-  useEffect(() => {
-    if (!sessionId || terminationCompleted || showSecondUserTermination) return;
+  useWebSocketConnection({
+    sessionId,
+    isTerminating,
+    terminationCompleted,
+    showSecondUserTermination,
+    onConnected: setIsConnected,
+    connectionId
+  });
 
-    console.log(`[${connectionId.current}] Starting status polling`);
+  useSessionPolling({
+    sessionId,
+    terminationCompleted,
+    showSecondUserTermination,
+    onStatusUpdate: (data) => {
+      setParticipantCount(data.participant_count);
+      setSessionActive(data.status === 'active');
+    },
+    onSessionEnded: handleTimeUpMessage,
+    connectionId
+  });
 
-    const pollStatus = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/session/${sessionId}/status`);
-        const data = await response.json();
-        
-        setParticipantCount(data.participant_count);
-        setSessionActive(data.status === 'active');
-        
-        if (data.status === 'active' && data.participant_count === 2) {
-          console.log(`[${connectionId.current}] 🎉 Second user joined!`);
-        }
-        
-        if (data.status === 'expired' || data.status === 'terminated') {
-          console.log(`[${connectionId.current}] Session ended:`, data.status);
-          handleTimeUpMessage();
-        }
-      } catch (err) {
-        console.error(`[${connectionId.current}] Status poll failed:`, err);
-      }
-    };
+  useMessageHandler({
+    isTerminating,
+    terminationCompleted,
+    showSecondUserTermination,
+    onMessage: handleMessage,
+    connectionId
+  });
 
-    pollStatus();
-    statusPollInterval.current = setInterval(pollStatus, 2000);
-
-    return () => {
-      if (statusPollInterval.current) {
-        clearInterval(statusPollInterval.current);
-        statusPollInterval.current = null;
-      }
-    };
-  }, [sessionId, terminationCompleted, showSecondUserTermination, handleTimeUpMessage]);
-
-  // Single connection attempt - this runs ONCE per component lifecycle
-  useEffect(() => {
-    // Prevent multiple connection attempts
-    if (connectionEstablished.current || isTerminating || terminationCompleted || showSecondUserTermination) {
-      console.log(`[${connectionId.current}] Connection already established or component terminating`);
-      return;
-    }
-
-    console.log(`[${connectionId.current}] 🔌 Connecting to session:`, sessionId);
-    connectionEstablished.current = true;
-
-    const connect = async () => {
-      try {
-        await wsService.connect(sessionId);
-        if (mountedRef.current) {
-          setIsConnected(true);
-          console.log(`[${connectionId.current}] ✅ WebSocket connected successfully`);
-        }
-      } catch (err) {
-        console.error(`[${connectionId.current}] ❌ WebSocket connection failed:`, err);
-        connectionEstablished.current = false;
-        
-        // Retry after delay
-        if (mountedRef.current && !reconnectTimer.current) {
-          console.log(`[${connectionId.current}] Scheduling reconnect...`);
-          reconnectTimer.current = setTimeout(() => {
-            console.log(`[${connectionId.current}] Reconnecting...`);
-            reconnectTimer.current = null;
-            connectionEstablished.current = false;
-            // The useEffect will run again because connectionEstablished is false
-          }, 3000);
-        }
-      }
-    };
-
-    connect();
-
-    return () => {
-      console.log(`[${connectionId.current}] 🧹 Cleanup - DO NOT disconnect WebSocket here`);
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = null;
-      }
-      // DO NOT disconnect here - let the service handle it
-    };
-  }, [sessionId, isTerminating, terminationCompleted, showSecondUserTermination]);
-
-  // Register message handler once
-  useEffect(() => {
-    if (!handlerRegistered.current && !isTerminating && !terminationCompleted && !showSecondUserTermination) {
-      console.log(`[${connectionId.current}] Adding message handler`);
-      wsService.addMessageHandler(handleMessage);
-      handlerRegistered.current = true;
-    }
-    return () => {
-      if (handlerRegistered.current) {
-        console.log(`[${connectionId.current}] Removing message handler`);
-        wsService.removeMessageHandler(handleMessage);
-        handlerRegistered.current = false;
-      }
-    };
-  }, [handleMessage, isTerminating, terminationCompleted, showSecondUserTermination]);
-
-  // Monitor connection status
   useEffect(() => {
     const interval = setInterval(() => {
       const connected = wsService.isConnected();
       if (connected !== isConnected) {
-        console.log(`[${connectionId.current}] Connection status changed:`, connected);
         setIsConnected(connected);
       }
     }, 2000);
     return () => clearInterval(interval);
   }, [isConnected]);
 
-  // Prevent refresh during active chat
   useEffect(() => {
     if (!terminationCompleted && !showSecondUserTermination && !isTerminating) {
       const cleanupRefresh = preventRefresh();
@@ -265,7 +177,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     }
   }, [terminationCompleted, showSecondUserTermination, isTerminating]);
 
-  // Save messages to sessionStorage (debounced)
   useEffect(() => {
     if (messages.length === 0 || isTerminating || terminationCompleted || otherUserLeft || showSecondUserTermination) {
       return;
@@ -278,28 +189,19 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     return () => clearTimeout(timeout);
   }, [messages, sessionId, isTerminating, terminationCompleted, otherUserLeft, showSecondUserTermination]);
 
-  // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
-      console.log(`[${connectionId.current}] 💥 Component unmounting`);
       mountedRef.current = false;
-      animationTimeouts.current.forEach(clearTimeout);
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
   }, [typingTimeoutRef]);
 
-  // Scroll to bottom (debounced)
   useEffect(() => {
     if (!messagesEndRef.current) return;
-
-    const timeout = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 100);
-
-    return () => clearTimeout(timeout);
+    messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
   const handleSend = () => {
@@ -366,14 +268,11 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     />
   );
 
-  const headerHeight = 57;
-  const connectionStatusHeight = !isConnected && !otherUserLeft && !timeUp ? 41 : 0;
-  const inputHeight = 73;
-
   return (
-    <div className="fixed inset-0 bg-navy overflow-hidden">
+    <div className="fixed inset-0 bg-navy flex flex-col">
+
       {/* Header */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: headerHeight, zIndex: 50 }}>
+      <div className="h-[57px] flex-shrink-0">
         <ChatHeader
           isConnected={isConnected}
           timeLeft={timeLeft}
@@ -384,32 +283,19 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         />
       </div>
 
-      {/* Connection Banner */}
-      <ConnectionBanner
-        isConnected={isConnected}
-        otherUserLeft={otherUserLeft}
-        timeUp={timeUp}
-        headerHeight={headerHeight}
-      />
+      {/* Connection banner */}
+      {!isConnected && !otherUserLeft && !timeUp && (
+        <div className="h-[41px] flex-shrink-0 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center justify-center">
+          <p className="text-yellow-400 text-xs">Establishing secure connection...</p>
+        </div>
+      )}
 
-      {/* Messages Container */}
+      {/* Messages – grows naturally */}
       <div
         ref={messagesContainerRef}
-        style={{
-          position: 'absolute',
-          top: headerHeight + connectionStatusHeight,
-          bottom: inputHeight + (otherUserLeft || timeUp ? 0 : keyboardHeight),
-          left: 0,
-          right: 0,
-          overflowY: 'auto',
-          padding: '1rem 0.5rem 1rem 1rem',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#64FFDA #0A192F',
-          transition: 'bottom 0.2s ease-out'
-        }}
-        className="scrollbar-thin scrollbar-thumb-sky scrollbar-track-navy"
+        className="flex-1 overflow-y-auto px-4"
       >
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto py-4">
           <MessageContainer
             messages={messages}
             otherUserTyping={otherUserTyping}
@@ -421,57 +307,58 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         </div>
       </div>
 
-      {/* Input Area */}
+      {/* Input area */}
       {!otherUserLeft && !timeUp ? (
         <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: keyboardHeight,
-            height: inputHeight,
-            zIndex: 40,
-            backgroundColor: '#0A192F',
-            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-            transition: 'bottom 0.2s ease-out'
-          }}
+          className="bg-navy border-t border-white/10 flex-shrink-0"
+          style={{ paddingBottom: keyboardHeight }}
         >
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <ChatInputControls
-              inputText={inputText}
-              isConnected={isConnected}
-              isSendingFile={isSendingFile || isUploading}
-              isTerminating={isTerminating}
-              otherUserLeft={otherUserLeft}
-              timeUp={timeUp}
-              onInputChange={handleTypingWrapper}
-              onSend={handleSend}
-              onAttachmentClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-              inputRef={inputRef}
+          <div className="max-w-4xl mx-auto px-4 h-[73px] flex items-center gap-2">
+            <button
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              disabled={!isConnected || isSendingFile || isUploading}
+              className="p-3 text-grey hover:text-white disabled:opacity-50 bg-white/5 rounded-xl hover:bg-white/10 transition-colors border border-white/10 hover:border-sky/30"
+              title="Attach file"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+              </svg>
+            </button>
+
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={handleTypingWrapper}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder={isConnected ? "Type your message..." : "Connecting..."}
+              disabled={!isConnected || isSendingFile || isUploading}
+              className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/50 focus:outline-none focus:border-sky/50 disabled:opacity-50 text-base"
             />
+
+            <button
+              onClick={handleSend}
+              disabled={!inputText.trim() || !isConnected || isSendingFile || isUploading}
+              className="p-3 bg-sky text-navy rounded-xl hover:bg-sky-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Send message"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
           </div>
         </div>
       ) : (
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 73,
-            zIndex: 40,
-            backgroundColor: '#0A192F',
-            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
+        <div className="h-[73px] bg-navy border-t border-white/10 flex items-center justify-center flex-shrink-0">
           <TerminationActions onTerminate={handleSecondUserTerminate} />
         </div>
       )}
 
-      {/* Attachment Menu */}
       <AttachmentMenu
         isOpen={showAttachmentMenu}
         onSelectImage={() => imageInputRef.current?.click()}
@@ -486,7 +373,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         onClose={() => setShowAttachmentMenu(false)}
       />
 
-      {/* Hidden file input */}
       <input
         ref={imageInputRef}
         type="file"
@@ -495,14 +381,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         className="hidden"
       />
 
-      {/* Media Error Message */}
       {mediaError && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500/90 text-white px-4 py-2 rounded-lg z-50">
           {mediaError}
         </div>
       )}
 
-      {/* Modals */}
       <TerminationModal
         show={showTerminateModal}
         isTerminating={isTerminating}

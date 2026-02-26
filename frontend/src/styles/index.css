@@ -205,3 +205,103 @@ button.btn-secondary,
   scrollbar-width: thin;
   scrollbar-color: #64FFDA #0A192F;
 }
+
+/* Toggle checkbox styling */
+.toggle-checkbox {
+  appearance: none;
+  width: 40px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-checkbox:checked {
+  background-color: rgba(100, 255, 218, 0.2);
+  border-color: rgba(100, 255, 218, 0.3);
+}
+
+.toggle-checkbox::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #8892B0;
+  border-radius: 50%;
+  top: 1px;
+  left: 1px;
+  transition: all 0.2s ease;
+}
+
+.toggle-checkbox:checked::after {
+  background-color: #64FFDA;
+  left: 21px;
+}
+
+.toggle-checkbox:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.toggle-checkbox:checked:hover {
+  background-color: rgba(100, 255, 218, 0.25);
+}
+
+/* Additional privacy measures */
+.chat-messages {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Subtle screen recording deterrent */
+.chat-messages::after {
+  content: '';
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #64FFDA;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 45;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.5; }
+}
+
+/* Anti-print styling */
+@media print {
+  .chat-messages,
+  .message-bubble,
+  .input-area {
+    display: none !important;
+  }
+  
+  body::after {
+    content: "This content is private and cannot be printed.";
+    display: block;
+    text-align: center;
+    color: #64FFDA;
+    font-size: 20px;
+    margin-top: 50px;
+  }
+}
+
+/* Disable context menu on chat */
+.no-context {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

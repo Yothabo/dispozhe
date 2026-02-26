@@ -25,3 +25,15 @@
 .animate-bounce {
   animation: bounce 1.4s infinite;
 }
+
+/* Smooth scrolling for the whole app */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Section transitions */
+section {
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+/* Modal animations are handled inline */

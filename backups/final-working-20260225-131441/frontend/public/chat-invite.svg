@@ -1,0 +1,19 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0A192F"/>
+  
+  <!-- Background glow -->
+  <circle cx="300" cy="300" r="250" fill="#64FFDA" opacity="0.1"/>
+  <circle cx="900" cy="350" r="300" fill="#4ECCA3" opacity="0.1"/>
+  
+  <!-- Main invite text - professional, no emojis -->
+  <text x="600" y="280" font-family="Goldman, monospace" font-size="96" font-weight="700" fill="#64FFDA" text-anchor="middle">PRIVATE CHAT</text>
+  <text x="600" y="370" font-family="Roboto, sans-serif" font-size="48" font-weight="300" fill="#CCD6F6" text-anchor="middle">You're invited</text>
+  
+  <!-- Features as clean text, no emojis -->
+  <text x="600" y="460" font-family="Roboto, sans-serif" font-size="24" fill="#8892B0" text-anchor="middle">End-to-end encrypted</text>
+  <text x="600" y="500" font-family="Roboto, sans-serif" font-size="24" fill="#8892B0" text-anchor="middle">Disappears after conversation</text>
+  <text x="600" y="540" font-family="Roboto, sans-serif" font-size="24" fill="#8892B0" text-anchor="middle">No sign-up required</text>
+  
+  <!-- Decorative line -->
+  <line x1="400" y1="580" x2="800" y2="580" stroke="#64FFDA" stroke-width="2" stroke-dasharray="10 10"/>
+</svg>

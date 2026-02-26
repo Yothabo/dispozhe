@@ -17,7 +17,8 @@ import {
   FaClock,
   FaUserFriends,
   FaDatabase,
-  FaQrcode
+  FaQrcode,
+  FaDollarSign
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,9 +32,11 @@ import LegalModal from '../components/modals/LegalModal';
 import PrivacyPolicyContent from '../components/modals/PrivacyPolicyContent';
 import SecurityContent from '../components/modals/SecurityContent';
 import TermsOfServiceContent from '../components/modals/TermsOfServiceContent';
+import ModesContent from '../components/modals/ModesContent';
 import FeaturesSection from '../components/sections/FeaturesSection';
 import HeroSection from '../components/sections/HeroSection';
 import HowItWorksSection from '../components/sections/HowItWorksSection';
+import WhySection from '../components/sections/WhySection';
 import SecuritySection from '../components/sections/SecuritySection';
 // import CTASection from '../components/sections/CTASection'; // Disabled
 import Footer from '../components/sections/Footer';
@@ -45,13 +48,14 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStartChat }) => {
-  const [activeModal, setActiveModal] = useState<'privacy' | 'terms' | 'disclaimer' | 'how-it-works' | 'features' | 'security' | 'contact' | 'careers' | null>(null);
+  const [activeModal, setActiveModal] = useState<'privacy' | 'terms' | 'disclaimer' | 'how-it-works' | 'features' | 'security' | 'modes' | 'contact' | 'careers' | null>(null);
 
   return (
     <div className="min-h-screen w-full">
       <HeroSection onStartChat={onStartChat} />
       <FeaturesSection />
       <HowItWorksSection />
+      <WhySection />
       <SecuritySection />
       {/* CTA Section disabled */}
       <Footer onModalOpen={setActiveModal} />
@@ -63,6 +67,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartChat }) => {
       <LegalModal isOpen={activeModal === 'how-it-works'} onClose={() => setActiveModal(null)} title="How It Works" content={<HowItWorksContent />} />
       <LegalModal isOpen={activeModal === 'features'} onClose={() => setActiveModal(null)} title="Features" content={<FeaturesContent />} />
       <LegalModal isOpen={activeModal === 'security'} onClose={() => setActiveModal(null)} title="Security" content={<SecurityContent />} />
+      <LegalModal isOpen={activeModal === 'modes'} onClose={() => setActiveModal(null)} title="Modes" content={<ModesContent />} />
       <LegalModal isOpen={activeModal === 'contact'} onClose={() => setActiveModal(null)} title="Contact Us" content={<ContactContent />} />
       <LegalModal isOpen={activeModal === 'careers'} onClose={() => setActiveModal(null)} title="Careers" content={<CareersContent />} />
     </div>

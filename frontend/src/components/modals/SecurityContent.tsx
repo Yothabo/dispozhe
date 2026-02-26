@@ -4,37 +4,48 @@ const SecurityContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Driflly's security architecture is designed to protect user privacy.
+        Driflly's security architecture is designed to prevent data retention and unauthorized access.
       </p>
       <div className="space-y-4">
-        <h4 className="text-white font-semibold">Encryption Protocol</h4>
+        <h4 className="text-white font-semibold">Encryption</h4>
         <p className="text-sm leading-relaxed">
-          AES-256-GCM encryption is applied to all messages. Keys are generated and stored exclusively on user devices.
+          Messages are encrypted with AES-256-GCM. Keys are generated and stored on participant devices. The server never receives encryption keys.
         </p>
       </div>
       <div className="space-y-4">
-        <h4 className="text-white font-semibold">Data Retention</h4>
+        <h4 className="text-white font-semibold">Data retention</h4>
         <p className="text-sm leading-relaxed">
-          Session metadata is stored temporarily in memory and permanently deleted upon session expiration or termination. No message content is stored.
+          Session metadata exists only in memory during active sessions. No message content is stored. Upon termination, all data is permanently deleted.
         </p>
       </div>
       <div className="space-y-4">
-        <h4 className="text-white font-semibold">Access Security</h4>
+        <h4 className="text-white font-semibold">Access control</h4>
         <p className="text-sm leading-relaxed">
-          Room access is secured through one-time links and codes that expire after use. Users are responsible for secure transmission of access methods.
+          Room access is secured through one-time links and codes that expire after use. Access methods cannot be reused.
         </p>
       </div>
       <div className="space-y-4">
-        <h4 className="text-white font-semibold">Open Source</h4>
+        <h4 className="text-white font-semibold">Server architecture</h4>
         <p className="text-sm leading-relaxed">
-          The Driflly codebase is open source and available for independent security auditing.
+          The server relays encrypted data between participants. It does not have access to plaintext messages or encryption keys.
         </p>
       </div>
       <div className="space-y-4">
-        <h4 className="text-white font-semibold">Security Limitations</h4>
+        <h4 className="text-white font-semibold">Open source</h4>
         <p className="text-sm leading-relaxed">
-          While industry-standard security measures are implemented, no internet-based service can guarantee absolute security. Users should exercise appropriate caution.
+          The codebase is publicly available. Independent security audits are permitted and encouraged.
         </p>
+      </div>
+      <div className="space-y-4">
+        <h4 className="text-white font-semibold">Limitations</h4>
+        <p className="text-sm leading-relaxed">
+          While the system is designed to prevent data retention, participants should be aware that:
+        </p>
+        <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
+          <li>Screenshots can be taken by participants</li>
+          <li>Devices may cache data outside the application</li>
+          <li>Network traffic metadata may be visible to internet service providers</li>
+        </ul>
       </div>
     </div>
   );

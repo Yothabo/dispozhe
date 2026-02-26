@@ -14,7 +14,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
 
   useEffect(() => {
     console.log('[FileViewer] Opening file:', file.name, file.type);
-    
+
     // Mark as viewed when opened
     if (!file.viewed) {
       console.log('[FileViewer] Marking file as viewed:', file.id);
@@ -29,24 +29,28 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
   }, [file, onViewed]);
 
   const handleDownload = () => {
-    if (file.data) {
-      const link = document.createElement('a');
-      link.href = `data:${file.type};base64,${file.data}`;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    // Grayed out - disabled for security
+    console.log('Download disabled for security');
+  };
+
+  const truncateFileName = (name: string, maxLength: number = 30) => {
+    if (name.length <= maxLength) return name;
+    const extension = name.split('.').pop() || '';
+    const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
+    const truncatedName = nameWithoutExt.substring(0, maxLength - 3 - extension.length);
+    return `${truncatedName}...${extension}`;
   };
 
   const renderContent = () => {
     if (file.type.startsWith('image/')) {
       return imageUrl ? (
-        <img 
-          src={imageUrl} 
-          alt={file.name} 
-          className="max-w-full max-h-[70vh] object-contain rounded-lg"
-        />
+        <div className="flex items-center justify-center p-2">
+          <img
+            src={imageUrl}
+            alt={file.name}
+            className="max-w-full max-h-[60vh] w-auto h-auto object-contain rounded-lg"
+          />
+        </div>
       ) : (
         <div className="flex items-center justify-center h-64">
           <FaEye className="w-12 h-12 text-grey animate-pulse" />
@@ -57,14 +61,14 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
         <iframe
           src={`data:application/pdf;base64,${file.data}`}
           title={file.name}
-          className="w-full h-[70vh] rounded-lg"
+          className="w-full h-[60vh] rounded-lg"
         />
       );
     } else {
       return (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <FaEye className="w-16 h-16 text-grey" />
-          <p className="text-grey text-center">{file.name}</p>
+          <p className="text-grey text-center px-4 break-all">{truncateFileName(file.name)}</p>
           <p className="text-grey/50 text-sm">
             {file.type} • {(file.size / 1024).toFixed(1)} KB
           </p>
@@ -78,17 +82,20 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
       <div className="relative max-w-4xl w-full bg-navy-light rounded-2xl border border-white/10 overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <h3 className="text-white font-bold truncate max-w-md">{file.name}</h3>
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-white font-bold truncate max-w-md" title={file.name}>
+              {truncateFileName(file.name)}
+            </h3>
             {file.viewOnce && file.viewed && (
-              <span className="text-xs bg-sky/10 text-sky px-2 py-1 rounded-full">Viewed once</span>
+              <span className="text-xs bg-sky/10 text-sky px-2 py-1 rounded-full flex-shrink-0">Viewed once</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={handleDownload}
-              className="p-2 text-grey hover:text-white transition-colors"
-              title="Download"
+              className="p-2 text-grey/50 cursor-not-allowed"
+              title="Download disabled for security"
+              disabled
             >
               <FaDownload className="w-5 h-5" />
             </button>
@@ -100,7 +107,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
             </button>
           </div>
         </div>
-        
+
         {/* Content */}
         <div className="p-4 bg-navy/50">
           {renderContent()}

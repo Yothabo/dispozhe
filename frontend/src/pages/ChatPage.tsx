@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import SimpleChat from '../components/simple-chat/SimpleChat';
+import ActiveChat from '../components/chat/ActiveChat';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const ChatPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -11,15 +12,19 @@ const ChatPage: React.FC = () => {
     return null;
   }
 
-  // Generate a consistent user ID
-  const userId = `${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const handleClose = () => {
+    navigate('/');
+  };
 
   return (
-    <SimpleChat
-      sessionId={sessionId}
-      userId={userId}
-      onTerminate={() => navigate('/')}
-    />
+    <ErrorBoundary>
+      <ActiveChat
+        sessionId={sessionId}
+        duration={5}
+        encryptionKey={encryptionKey}
+        onTerminate={handleClose}
+      />
+    </ErrorBoundary>
   );
 };
 

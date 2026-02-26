@@ -2,7 +2,7 @@
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     client_host = websocket.client.host if websocket.client else "unknown"
     logger.info(f"WebSocket connection attempt from {client_host} for session {session_id}")
-    
+
     db = SessionLocal()
     try:
         session = db.query(DBSession).filter(DBSession.id == session_id).first()
@@ -19,15 +19,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             await websocket.close(code=1008, reason="Session expired")
             return
 
-        # Accept connection first
+        # Check connection count BEFORE accepting
+        current_connections = app.state.manager.get_connection_count(session_id)
+        if current_connections >= 2:
+            logger.warning(f"Session {session_id} already has 2 connections - rejecting with code 4003")
+            await websocket.close(code=4003, reason="Session full")
+            return
+
+        # Now accept the connection
         await websocket.accept()
         logger.info(f"WebSocket accepted for session {session_id}")
 
-        # Try to connect - this will reject if we already have 2 connections
-        if not await app.state.manager.connect(websocket, session_id):
-            logger.warning(f"Failed to add connection for session {session_id} - max connections reached")
-            await websocket.close(code=1008, reason="Maximum connections reached")
-            return
+        # Register the connection
+        await app.state.manager.connect(websocket, session_id)
 
         connection_count = app.state.manager.get_connection_count(session_id)
         logger.info(f"WebSocket connected for session {session_id}, total connections: {connection_count}")
@@ -61,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             while True:
                 message = await websocket.receive_text()
                 logger.debug(f"Received message from {session_id}: {message[:50]}")
-                
+
                 # Broadcast to other participants
                 await app.state.manager.broadcast_to_session(
                     session_id,

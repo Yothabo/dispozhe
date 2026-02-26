@@ -3,18 +3,18 @@ export interface FileMessage {
   name: string;
   type: string;
   size: number;
-  data: string;
-  viewOnce: boolean;
+  data?: string;
+  viewOnce?: boolean;
   viewed?: boolean;
 }
 
 export interface Message {
   id: string;
-  text: string;
+  text?: string;
+  file?: FileMessage;
   sender: 'me' | 'them' | 'system';
   timestamp: number;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
-  file?: FileMessage;
 }
 
 export interface TerminationStep {

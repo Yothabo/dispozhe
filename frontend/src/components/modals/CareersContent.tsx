@@ -28,7 +28,9 @@ const CareersContent: React.FC = () => {
           <p className="text-sm text-grey mb-3">
             Build elegant, responsive interfaces for our ephemeral chat platform.
           </p>
-          <button className="text-xs text-sky hover:underline">Apply →</button>
+          <button className="text-xs text-grey/50 cursor-not-allowed" disabled>
+            Apply →
+          </button>
         </div>
 
         <div className="glass rounded-xl p-5 border border-white/5">
@@ -44,7 +46,9 @@ const CareersContent: React.FC = () => {
           <p className="text-sm text-grey mb-3">
             Audit and harden our encryption protocols and infrastructure.
           </p>
-          <button className="text-xs text-sky hover:underline">Apply →</button>
+          <button className="text-xs text-grey/50 cursor-not-allowed" disabled>
+            Apply →
+          </button>
         </div>
 
         <div className="glass rounded-xl p-5 border border-white/5">
@@ -60,7 +64,9 @@ const CareersContent: React.FC = () => {
           <p className="text-sm text-grey mb-3">
             Champion privacy-first development and grow our community.
           </p>
-          <button className="text-xs text-sky hover:underline">Apply →</button>
+          <button className="text-xs text-grey/50 cursor-not-allowed" disabled>
+            Apply →
+          </button>
         </div>
       </div>
 

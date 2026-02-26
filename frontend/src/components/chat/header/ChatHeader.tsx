@@ -19,7 +19,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   isTerminated = false
 }) => {
   return (
-    <div className="bg-navy-light/30 backdrop-blur-sm border-b border-white/5 px-4 py-3">
+    <div className="bg-white/5 border-b border-white/10 px-4 py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
