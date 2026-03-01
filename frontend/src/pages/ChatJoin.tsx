@@ -27,37 +27,31 @@ const ChatJoin: React.FC = () => {
           return;
         }
 
-        console.log('[ChatJoin] Joining session:', sessionId);
         joinAttempted.current = true;
 
         // Check session status
         const status = await api.getSessionStatus(sessionId);
 
         if (status.status === 'expired') {
-          console.log('[ChatJoin] Session expired');
           navigate('/');
           return;
         }
 
         // If session already has 2 participants, go directly to chat
         if (status.participant_count >= 2) {
-          console.log('[ChatJoin] Session already active, going to chat');
           navigate(`/chat/${sessionId}#${key}`, { replace: true });
           return;
         }
 
         const isInitiator = sessionStorage.getItem(`chatlly_initiator_${sessionId}`) === 'true';
         if (isInitiator) {
-          console.log('[ChatJoin] User is initiator, going to waiting');
           navigate(`/waiting/${sessionId}#${key}`, { replace: true });
           return;
         }
 
-        console.log('[ChatJoin] Joining session as second participant');
         const joinResult = await api.joinSession(sessionId);
         
         if (joinResult.status === 'active') {
-          console.log('[ChatJoin] Join successful, going to chat');
           navigate(`/chat/${sessionId}#${key}`, { replace: true });
         } else {
           console.error('[ChatJoin] Join failed:', joinResult);

@@ -15,7 +15,6 @@ export const measurePerformance = () => {
       fullLoad: perfData.loadEventEnd - navigationStart || 0,
     };
 
-    console.log('Performance Metrics:', metrics);
     
     if (metrics.fullLoad > 3000) {
       console.warn('Slow page load detected');

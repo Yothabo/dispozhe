@@ -13,11 +13,9 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('[FileViewer] Opening file:', file.name, file.type);
 
     // Mark as viewed when opened
     if (!file.viewed) {
-      console.log('[FileViewer] Marking file as viewed:', file.id);
       onViewed(file.id);
     }
 
@@ -30,7 +28,6 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
 
   const handleDownload = () => {
     // Grayed out - disabled for security
-    console.log('Download disabled for security');
   };
 
   const truncateFileName = (name: string, maxLength: number = 30) => {

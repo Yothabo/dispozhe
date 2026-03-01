@@ -31,11 +31,9 @@ export const useWebSocketConnection = ({
 
   useEffect(() => {
     if (connectionEstablished.current || isTerminating || terminationCompleted || showSecondUserTermination) {
-      console.log(`[${connectionId.current}] Connection already established or component terminating`);
       return;
     }
 
-    console.log(`[${connectionId.current}] Connecting to session:`, sessionId);
     connectionEstablished.current = true;
 
     const connect = async () => {
@@ -43,16 +41,13 @@ export const useWebSocketConnection = ({
         await wsService.connect(sessionId);
         if (mountedRef.current) {
           onConnected(true);
-          console.log(`[${connectionId.current}] WebSocket connected successfully`);
         }
       } catch (err) {
         console.error(`[${connectionId.current}] WebSocket connection failed:`, err);
         connectionEstablished.current = false;
 
         if (mountedRef.current && !reconnectTimer.current) {
-          console.log(`[${connectionId.current}] Scheduling reconnect...`);
           reconnectTimer.current = setTimeout(() => {
-            console.log(`[${connectionId.current}] Reconnecting...`);
             reconnectTimer.current = null;
             connectionEstablished.current = false;
           }, 3000);
@@ -63,7 +58,6 @@ export const useWebSocketConnection = ({
     connect();
 
     return () => {
-      console.log(`[${connectionId.current}] Cleanup - DO NOT disconnect WebSocket here`);
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;

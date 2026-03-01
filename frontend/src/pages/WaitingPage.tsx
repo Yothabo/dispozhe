@@ -4,6 +4,7 @@ import WaitingScreen from '../components/chat/WaitingScreen';
 import api from '../services/api';
 import wsService from '../services/websocket';
 import Background from '../components/Background';
+import { useSessionValidation } from '../hooks/useSessionValidation';
 
 const WaitingPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -14,14 +15,20 @@ const WaitingPage: React.FC = () => {
   const polling = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasNavigated = useRef<boolean>(false);
 
+  // Validate session on mount
+  const { checking } = useSessionValidation({ 
+    sessionId: sessionId || '', 
+    redirectTo: '/' 
+  });
+
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || checking) return;
 
     const key = window.location.hash.substring(1);
     const fullLink = `${window.location.origin}/c/${sessionId}#${key}`;
     setLink(fullLink);
 
-    // Get session details - don't await, let it happen in background
+    // Get session details
     api.getSessionStatus(sessionId).then(status => {
       const mins = status.time_left_seconds ? Math.ceil(status.time_left_seconds / 60) : 30;
       setDuration(mins);
@@ -33,26 +40,22 @@ const WaitingPage: React.FC = () => {
       setCode(sessionCode);
     }
 
-    // Poll for participant joining - faster polling
+    // Poll for participant joining
     const poll = async () => {
       if (hasNavigated.current) return;
 
       try {
         const status = await api.getSessionStatus(sessionId);
-        
+
         if (status.status === 'active' && status.participant_count === 2) {
           hasNavigated.current = true;
 
-          // Clear interval immediately
           if (polling.current) {
             clearInterval(polling.current);
             polling.current = null;
           }
 
-          // Connect WebSocket in background - don't wait for it
           wsService.connect(sessionId).catch(console.error);
-
-          // Navigate immediately
           navigate(`/chat/${sessionId}#${key}`, { replace: true });
         }
       } catch (err) {
@@ -60,7 +63,6 @@ const WaitingPage: React.FC = () => {
       }
     };
 
-    // Start polling - fast 1 second polling
     poll();
     polling.current = setInterval(poll, 1000);
 
@@ -70,7 +72,7 @@ const WaitingPage: React.FC = () => {
         polling.current = null;
       }
     };
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, checking]);
 
   const handleTerminate = async () => {
     if (sessionId) {
@@ -83,17 +85,19 @@ const WaitingPage: React.FC = () => {
         console.error('Failed to terminate:', err);
       }
     }
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
-  if (!link) {
+  if (!link || checking) {
     return (
       <div className="relative min-h-screen">
         <Background />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-sky border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-grey text-sm font-light">Generating secure link...</p>
+            <p className="text-grey text-sm font-light">
+              {checking ? 'Validating session...' : 'Generating secure link...'}
+            </p>
           </div>
         </div>
       </div>

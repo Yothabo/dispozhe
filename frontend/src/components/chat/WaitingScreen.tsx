@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { FaSpinner, FaTrash } from 'react-icons/fa'
+import { FaSpinner, FaTrash, FaArrowLeft } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
 
 import { preventChatReload } from '../../utils/preventReload'
+import { useNavigationGuard } from '../../hooks/useNavigationGuard'
 import HowToConnect from './howto/HowToConnect'
 import ShareableLinkCard from './cards/ShareableLinkCard'
 import QRModal from '../modals/QRModal'
@@ -28,33 +30,29 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
   onCopyCode,
   onTerminate
 }) => {
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [showCodeModal, setShowCodeModal] = useState(false)
-  const [showTerminateModal, setShowTerminateModal] = useState(false)
-  const [isDestroyed, setIsDestroyed] = useState(false)
+  const navigate = useNavigate();
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isDestroyed, setIsDestroyed] = useState(false);
   const [itemStates, setItemStates] = useState([
     { id: 1, status: 'pending' },
     { id: 2, status: 'pending' },
     { id: 3, status: 'pending' },
     { id: 4, status: 'pending' },
     { id: 5, status: 'pending' }
-  ])
+  ]);
+
+  useNavigationGuard({
+    isActive: true,
+    onBack: () => {
+      setShowTerminateModal(true);
+    }
+  });
 
   useEffect(() => {
     const cleanup = preventChatReload("This will terminate your chat session. Are you sure?");
     return cleanup;
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
-      setShowTerminateModal(true);
-    };
-    window.history.pushState(null, '', window.location.pathname);
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
   }, []);
 
   const handleTerminateClick = () => {
@@ -77,6 +75,10 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
         }, 400);
       }, index * 300);
     });
+  };
+
+  const handleGoBack = () => {
+    setShowTerminateModal(true);
   };
 
   if (!link) {
@@ -104,19 +106,22 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-navy">
+      <div className="absolute top-4 left-4 z-10 lg:hidden">
+        <button
+          onClick={handleGoBack}
+          className="p-2 text-grey hover:text-white transition-colors"
+          aria-label="Go back"
+        >
+          <FaArrowLeft className="w-5 h-5" />
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-4 pt-24 pb-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col items-center justify-start min-h-full">
-            
-            {/* Centered container for the two columns */}
             <div className="w-full max-w-4xl mx-auto">
-              {/* Two-column layout - 1fr 1fr on all viewports */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
-                
-                {/* Left Column - How to Connect */}
                 <HowToConnect />
-
-                {/* Right Column - Shareable Link Card */}
                 <ShareableLinkCard
                   link={link}
                   code={code}
@@ -127,8 +132,6 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
                 />
               </div>
             </div>
-
-            {/* Waiting Indicator - centered below both columns */}
             <div className="flex items-center gap-2 mt-12 text-grey/70">
               <FaSpinner className="w-3 h-3 text-sky animate-spin" />
               <span className="text-xs font-light tracking-wide">Waiting for someone to join...</span>
@@ -137,7 +140,6 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
         </div>
       </div>
 
-      {/* Terminate Button */}
       <div className="border-t border-white/5 px-6 py-4">
         <div className="max-w-4xl mx-auto">
           <button
@@ -150,7 +152,6 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
         </div>
       </div>
 
-      {/* Modals */}
       <QRModal
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}

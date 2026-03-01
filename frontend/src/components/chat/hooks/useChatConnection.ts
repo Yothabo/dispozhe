@@ -8,26 +8,21 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
   const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
 
   useEffect(() => {
-    console.log(`[${connectionId.current}] useChatConnection effect for session:`, sessionId);
     
     if (!sessionId || connectAttempted.current) {
-      console.log(`[${connectionId.current}] Already attempted or no sessionId`);
       return;
     }
 
     connectAttempted.current = true;
-    console.log(`[${connectionId.current}] Attempting to connect to session:`, sessionId);
 
     // Check if already connected to this session
     if (wsService.isConnected() && wsService.getSessionId() === sessionId) {
-      console.log(`[${connectionId.current}] Already connected`);
       setIsConnected(true);
       return;
     }
 
     // Add message handler first
     if (!handlerRegistered.current) {
-      console.log(`[${connectionId.current}] Adding message handler`);
       wsService.addMessageHandler(onMessage);
       handlerRegistered.current = true;
     }
@@ -35,7 +30,6 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
     // Then connect
     wsService.connect(sessionId)
       .then(() => {
-        console.log(`[${connectionId.current}] Connected successfully`);
         setIsConnected(true);
       })
       .catch((err) => {
@@ -44,9 +38,7 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
       });
 
     return () => {
-      console.log(`[${connectionId.current}] Cleanup`);
       if (handlerRegistered.current) {
-        console.log(`[${connectionId.current}] Removing message handler`);
         wsService.removeMessageHandler(onMessage);
         handlerRegistered.current = false;
       }
@@ -59,7 +51,6 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
     const interval = setInterval(() => {
       const connected = wsService.isConnected();
       if (connected !== isConnected) {
-        console.log(`[${connectionId.current}] Connection status changed:`, connected);
         setIsConnected(connected);
       }
     }, 2000);

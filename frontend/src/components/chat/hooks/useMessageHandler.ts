@@ -20,13 +20,11 @@ export const useMessageHandler = ({
 
   useEffect(() => {
     if (!handlerRegistered.current && !isTerminating && !terminationCompleted && !showSecondUserTermination) {
-      console.log(`[${connectionId.current}] Adding message handler`);
       wsService.addMessageHandler(onMessage);
       handlerRegistered.current = true;
     }
     return () => {
       if (handlerRegistered.current) {
-        console.log(`[${connectionId.current}] Removing message handler`);
         wsService.removeMessageHandler(onMessage);
         handlerRegistered.current = false;
       }

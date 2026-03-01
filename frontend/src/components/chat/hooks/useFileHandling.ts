@@ -50,7 +50,6 @@ export const useFileHandling = (
 
         try {
           fileToSend = await imageCompression(file, options);
-          console.log(`[Image] Compressed from ${(file.size/1024/1024).toFixed(2)}MB to ${(fileToSend.size/1024/1024).toFixed(2)}MB`);
         } catch (compressionError) {
           console.error('Compression failed, sending original:', compressionError);
           fileToSend = file;
@@ -101,7 +100,6 @@ export const useFileHandling = (
         timestamp
       };
 
-      console.log('[FileHandling] Sending file:', message);
       const sent = wsService.sendMessage(message);
 
       if (!sent) {
@@ -133,27 +131,22 @@ export const useFileHandling = (
   }, [addMessage, setMessages, mountedRef, setIsSendingFile, onClosePicker]);
 
   const handleViewFile = useCallback((message: Message) => {
-    console.log('[FileHandling] handleViewFile called for message:', message.id);
     
     if (!message.file) {
-      console.log('[FileHandling] No file in message');
       return;
     }
     
     // Check if file has already been viewed
     if (viewedFiles.current.has(message.id)) {
-      console.log('[FileHandling] File already viewed:', message.id);
       notifyManagement('This file can only be viewed once', 'info');
       return;
     }
     
     // Always open the preview modal first
-    console.log('[FileHandling] Opening preview for file:', message.file.name);
     setPreviewFile(message.file);
     
     // Then mark as viewed if it's from them and viewOnce
     if (message.sender === 'them' && message.file.viewOnce && !message.file.viewed) {
-      console.log('[FileHandling] Marking file as viewed:', message.id);
       
       // Update local state
       setMessages(prev => prev.map(msg => {
@@ -180,7 +173,6 @@ export const useFileHandling = (
   }, [setMessages, viewedFiles]);
 
   const handleFileViewed = useCallback((fileId: string) => {
-    console.log('[FileHandling] File viewed callback:', fileId);
     
     // Add to viewed set
     viewedFiles.current.add(fileId);

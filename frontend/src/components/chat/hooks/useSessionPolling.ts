@@ -22,8 +22,6 @@ export const useSessionPolling = ({
   useEffect(() => {
     if (!sessionId || terminationCompleted || showSecondUserTermination) return;
 
-    console.log(`[${connectionId.current}] Starting status polling`);
-
     const pollStatus = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/session/${sessionId}/status`);
@@ -36,7 +34,7 @@ export const useSessionPolling = ({
         }
 
         if (data.status === 'expired' || data.status === 'terminated') {
-          console.log(`[${connectionId.current}] Session ended:`, data.status);
+          console.log(`[${connectionId.current}] Session ended`);
           onSessionEnded();
         }
       } catch (err) {

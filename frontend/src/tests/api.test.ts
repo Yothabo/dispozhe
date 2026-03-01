@@ -24,7 +24,6 @@ describe('Session Management API', () => {
     sessionId = data.session_id;
     sessionCode = data.code;
     
-    console.log('Session created:', { sessionId, sessionCode });
   });
 
   it('should get session status', async () => {

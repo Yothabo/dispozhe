@@ -51,7 +51,6 @@ export const useChatMessageHandlers = (
 
     const isViewed = viewedFiles.current.has(data.id);
     
-    console.log('[MessageHandlers] Received file:', data.file.name);
     
     addMessage({
       id: data.id,
@@ -116,7 +115,6 @@ export const useChatMessageHandlers = (
   }, [setMessages, viewedFiles]);
 
   const handleMessage = useCallback((data: any) => {
-    console.log('[MessageHandlers] Received:', data.type);
     
     switch (data.type) {
       case 'participant_leaving':
@@ -147,7 +145,6 @@ export const useChatMessageHandlers = (
         handleFileViewed(data);
         break;
       default:
-        console.log('[MessageHandlers] Unknown message type:', data.type);
     }
   }, [
     handleParticipantLeaving,

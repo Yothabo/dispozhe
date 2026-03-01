@@ -15,10 +15,8 @@ const SimpleChat: React.FC<SimpleChatProps> = ({ sessionId, userId, onTerminate 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log('SimpleChat: Connecting to session', sessionId);
 
     const handleMessage = (data: any) => {
-      console.log('SimpleChat Received:', data);
 
       if (data.type === 'connected') {
         setIsConnected(true);

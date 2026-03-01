@@ -27,7 +27,6 @@ class SoundManager {
         html5: true,
         preload: false,
         onloaderror: () => {
-          console.log(`[Sound] Failed to load ${key}, using fallback`);
           this.fallbackEnabled = true;
         }
       });
@@ -81,7 +80,6 @@ class SoundManager {
           break;
       }
     } catch (e) {
-      console.log('[Sound] Web Audio API not supported');
     }
   }
 

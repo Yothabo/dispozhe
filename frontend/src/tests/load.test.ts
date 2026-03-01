@@ -21,6 +21,5 @@ describe('Load Testing', () => {
       });
     }
     expect(sessions.length).toBe(5);
-    console.log(` Created and cleaned up ${sessions.length} sessions`);
   });
 });

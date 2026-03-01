@@ -32,18 +32,15 @@ class WebSocketService {
     }
 
     if (this.connectionInProgress) {
-      console.log('[WebSocket] Connection already in progress');
       return Promise.reject(new Error('Connection in progress'));
     }
 
     if (this.ws?.readyState === WebSocket.OPEN && this.currentSessionId === sessionId) {
-      console.log('[WebSocket] Already connected');
       this.flushMessageQueue();
       return Promise.resolve();
     }
 
     if (this.ws) {
-      console.log('[WebSocket] Closing existing connection');
       this.ws.close();
       this.ws = null;
     }
@@ -60,13 +57,11 @@ class WebSocketService {
     return new Promise((resolve, reject) => {
       try {
         const wsUrl = this.getWebSocketUrl(sessionId);
-        console.log('[WebSocket] Connecting to:', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
           if (this.connectionId !== newConnectionId) return;
-          
-          console.log('[WebSocket] Connected to session', sessionId);
+
           this.connectionInProgress = false;
           this.reconnectAttempts = 0;
           this.startHeartbeat();
@@ -76,7 +71,7 @@ class WebSocketService {
 
         this.ws.onmessage = (event) => {
           if (this.connectionId !== newConnectionId) return;
-          
+
           try {
             const data = JSON.parse(event.data);
 
@@ -87,10 +82,6 @@ class WebSocketService {
 
             if (data.type === 'pong') {
               return;
-            }
-
-            if (data.type === 'connected') {
-              console.log('[WebSocket] Connected message received with participant count:', data.connection_count);
             }
 
             if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
@@ -113,26 +104,22 @@ class WebSocketService {
 
         this.ws.onerror = (error) => {
           if (this.connectionId !== newConnectionId) return;
-          
-          console.error('[WebSocket] Error:', error);
+
           this.connectionInProgress = false;
           reject(error);
         };
 
         this.ws.onclose = (event) => {
           if (this.connectionId !== newConnectionId) return;
-          
-          console.log('[WebSocket] Closed:', event.code, event.reason);
+
           this.connectionInProgress = false;
           this.stopHeartbeat();
 
           if (this.terminating || this.isTerminated) {
-            console.log('[WebSocket] Terminating, not reconnecting');
             return;
           }
 
           if (event.code === 1000) {
-            console.log('[WebSocket] Normal close, not reconnecting');
             return;
           }
 
@@ -171,21 +158,15 @@ class WebSocketService {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 8000);
 
-    console.log(`[WebSocket] Reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
-
     this.reconnectTimer = setTimeout(() => {
       if (this.currentSessionId && !this.isTerminated && this.shouldReconnect && !this.terminating) {
-        console.log('[WebSocket] Attempting to reconnect...');
-        this.connect(this.currentSessionId).catch(err => {
-          console.error('[WebSocket] Reconnect failed:', err);
-        });
+        this.connect(this.currentSessionId).catch(() => {});
       }
     }, delay);
   }
 
   private flushMessageQueue() {
     if (this.messageQueue.length > 0) {
-      console.log(`[WebSocket] Flushing ${this.messageQueue.length} queued messages`);
       const queue = [...this.messageQueue];
       this.messageQueue = [];
       queue.forEach(msg => this.sendMessage(msg));
@@ -193,7 +174,6 @@ class WebSocketService {
   }
 
   disconnect() {
-    console.log('[WebSocket] Disconnecting...');
     this.shouldReconnect = false;
     this.connectionInProgress = false;
     this.isTerminated = false;
@@ -228,12 +208,10 @@ class WebSocketService {
         this.ws.send(JSON.stringify(message));
         return true;
       } catch (err) {
-        console.error('[WebSocket] Send error:', err);
         this.messageQueue.push(message);
         return false;
       }
     } else {
-      console.warn('[WebSocket] Not connected, queueing message');
       this.messageQueue.push(message);
       return false;
     }
@@ -265,5 +243,5 @@ class WebSocketService {
   }
 }
 
-export const wsService = new WebSocketService();
+const wsService = new WebSocketService();
 export default wsService;

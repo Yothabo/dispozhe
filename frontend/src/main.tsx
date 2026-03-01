@@ -16,7 +16,6 @@ if (!root) {
         <RouterProvider router={router} />
       </React.StrictMode>
     );
-    console.log('React app mounted successfully');
   } catch (error) {
     console.error('Failed to mount React app:', error);
     root.innerHTML = `<div style="color: red; padding: 20px;">${error}</div>`;

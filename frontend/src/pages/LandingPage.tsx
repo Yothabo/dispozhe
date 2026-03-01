@@ -38,6 +38,7 @@ import HeroSection from '../components/sections/HeroSection';
 import HowItWorksSection from '../components/sections/HowItWorksSection';
 import WhySection from '../components/sections/WhySection';
 import SecuritySection from '../components/sections/SecuritySection';
+import ImageSection from '../components/sections/ImageSection';
 // import CTASection from '../components/sections/CTASection'; // Disabled
 import Footer from '../components/sections/Footer';
 
@@ -57,6 +58,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartChat }) => {
       <HowItWorksSection />
       <WhySection />
       <SecuritySection />
+      <ImageSection />
       {/* CTA Section disabled */}
       <Footer onModalOpen={setActiveModal} />
 

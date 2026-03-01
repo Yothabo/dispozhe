@@ -22,7 +22,6 @@ describe('WebSocket Connection Tests', () => {
     const data = await response.json();
     sessionId = data.session_id;
     sessionCode = data.code;
-    console.log('Session created:', { sessionId, sessionCode });
   });
 
   afterAll(() => {
@@ -36,7 +35,6 @@ describe('WebSocket Connection Tests', () => {
       ws1 = new WebSocket(`${WS_URL}/ws/${sessionId}`);
       
       ws1.on('open', () => {
-        console.log('Participant 1 connected');
         expect(ws1.readyState).toBe(WebSocket.OPEN);
         resolve();
       });
@@ -52,7 +50,6 @@ describe('WebSocket Connection Tests', () => {
       const onMessage = (data: WebSocket.RawData) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'connected') {
-          console.log('Participant 1 received connected message');
           expect(message.connection_count).toBe(1);
           expect(message.session_id).toBe(sessionId);
           ws1.removeListener('message', onMessage);
@@ -79,7 +76,6 @@ describe('WebSocket Connection Tests', () => {
       ws2 = new WebSocket(`${WS_URL}/ws/${sessionId}`);
       
       ws2.on('open', () => {
-        console.log('Participant 2 connected');
         expect(ws2.readyState).toBe(WebSocket.OPEN);
         resolve();
       });
@@ -95,7 +91,6 @@ describe('WebSocket Connection Tests', () => {
       const onMessage = (data: WebSocket.RawData) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'connected') {
-          console.log('Participant 2 received connected message');
           expect(message.connection_count).toBe(2);
           ws2.removeListener('message', onMessage);
           resolve();
@@ -114,7 +109,6 @@ describe('WebSocket Connection Tests', () => {
         const message = JSON.parse(data.toString());
         if (message.type === 'message') {
           const decoded = atob(message.data);
-          console.log('Message received by participant 2:', decoded);
           expect(decoded).toBe(testMessage);
           ws2.removeListener('message', onMessage);
           resolve();
@@ -141,7 +135,6 @@ describe('WebSocket Connection Tests', () => {
         const message = JSON.parse(data.toString());
         if (message.type === 'message') {
           const decoded = atob(message.data);
-          console.log('Message received by participant 1:', decoded);
           expect(decoded).toBe(testMessage);
           ws1.removeListener('message', onMessage);
           resolve();
@@ -165,7 +158,6 @@ describe('WebSocket Connection Tests', () => {
       const onMessage = (data: WebSocket.RawData) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'typing') {
-          console.log('Typing indicator received');
           expect(message.isTyping).toBe(true);
           ws2.removeListener('message', onMessage);
           resolve();
@@ -196,7 +188,6 @@ describe('WebSocket Connection Tests', () => {
       ws3.on('close', (code) => {
         if (!closed) {
           closed = true;
-          console.log('Third participant rejected with code:', code);
           // Accept either 1006 (HTTP 403 rejection) or 1008 (explicit close)
           expect([1006, 1008]).toContain(code);
           resolve();
@@ -204,7 +195,6 @@ describe('WebSocket Connection Tests', () => {
       });
       
       ws3.on('error', (error) => {
-        console.log('Third participant error (expected):', error.message);
         // Don't reject on error - we'll wait for close event
       });
       
@@ -222,7 +212,6 @@ describe('WebSocket Connection Tests', () => {
       let ws2Closed = false;
       
       ws2.on('close', (code) => {
-        console.log('Participant 2 closed with code:', code);
         ws2Closed = true;
         
         // Check that ws1 is still connected
@@ -235,7 +224,6 @@ describe('WebSocket Connection Tests', () => {
       
       // Close participant 2
       setTimeout(() => {
-        console.log('Closing participant 2');
         ws2.close();
       }, 100);
     });
@@ -247,7 +235,6 @@ describe('WebSocket Connection Tests', () => {
       const onMessage = (data: WebSocket.RawData) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'session_terminated') {
-          console.log('Participant 1 notified of session termination');
           ws1.removeListener('message', onMessage);
           resolve();
         }
@@ -260,7 +247,6 @@ describe('WebSocket Connection Tests', () => {
         method: 'DELETE'
       }).then(response => {
         expect(response.status).toBe(200);
-        console.log('Session terminated via API');
       }).catch(err => {
         console.error('Termination API error:', err);
       });

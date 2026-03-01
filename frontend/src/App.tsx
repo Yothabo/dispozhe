@@ -10,12 +10,10 @@ function App() {
   const [hasStarted, setHasStarted] = useState(false);
 
   const handleStartChat = () => {
-    console.log('Start chat clicked');
     setHasStarted(true);
   };
 
   const handleExit = () => {
-    console.log('Exit clicked');
     setHasStarted(false);
   };
 

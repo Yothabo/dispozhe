@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
+import { FaBolt, FaKey, FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import ModeSelectorModal from '../modals/ModeSelectorModal';
 
@@ -23,6 +23,21 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
 
   return (
     <section className="w-full min-h-screen flex items-center relative overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-full lg:w-1/2 h-full opacity-20 lg:opacity-100">
+          <img 
+            src="/images/hero.png" 
+            alt="" 
+            className="w-full h-full object-contain object-right"
+            aria-hidden="true"
+          />
+        </div>
+        {/* Gradient overlay to ensure text readability */}
+        <div className="absolute inset-0 bg-gradient-to-l from-transparent via-navy/50 to-navy lg:via-transparent"></div>
+      </div>
+
+      {/* Content */}
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-12 sm:py-16 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="text-left">
@@ -66,61 +81,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               Freemium • Ephemeral • Open source
             </p>
           </div>
-
-          {/* Chat Preview - Desktop only */}
-          <div className="hidden lg:block relative">
-            <div className="glass rounded-3xl p-8 border border-sky/20">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-sky/20 flex items-center justify-center">
-                    <span className="text-sky text-xs font-bold">A</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-white/5 rounded-2xl rounded-tl-none p-3">
-                      <p className="text-white text-sm">Is anyone listening?</p>
-                    </div>
-                    <span className="text-grey/50 text-[10px] mt-1 block">2 min left</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 flex-row-reverse">
-                  <div className="w-8 h-8 rounded-full bg-sky flex items-center justify-center">
-                    <span className="text-navy text-xs font-bold">B</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-sky/10 rounded-2xl rounded-tr-none p-3 border border-sky/20">
-                      <p className="text-sky text-sm">No eyes, no ears. Just us.</p>
-                    </div>
-                    <span className="text-grey/50 text-[10px] mt-1 block text-right">1 min left</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-sky/20 flex items-center justify-center">
-                    <span className="text-sky text-xs font-bold">A</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-white/5 rounded-2xl rounded-tl-none p-3">
-                      <p className="text-white text-sm">Good. Sharing the link now...</p>
-                    </div>
-                    <span className="text-grey/50 text-[10px] mt-1 block">30 sec left</span>
-                  </div>
-                </div>
-                <div className="mt-6 pt-4 border-t border-white/5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-grey font-light">Chat room ends in</span>
-                    <span className="text-sky font-bold">2:34</span>
-                  </div>
-                  <div className="w-full h-1 bg-white/5 rounded-full mt-2">
-                    <div className="w-1/3 h-1 bg-sky rounded-full"></div>
-                  </div>
-                  <p className="text-grey/50 text-[10px] mt-2 text-center font-light">
-                    No data stored. No history retained.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -top-4 -right-4 w-24 h-24 bg-sky/5 rounded-full blur-2xl"></div>
-            <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-sky/5 rounded-full blur-2xl"></div>
-          </div>
+          
+          {/* Empty div to maintain grid layout */}
+          <div className="hidden lg:block"></div>
         </div>
       </div>
 
