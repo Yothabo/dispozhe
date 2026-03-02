@@ -1,185 +1,57 @@
-# Driflly - Ephemeral, Encrypted Conversations That Vanish
+# Dispozhe
 
-![Driflly](https://driflly.vercel.app/og-main.png)
+## Project Description
+Dispozhe is an innovative application designed to streamline and enhance user experiences in managing various tasks and resources efficiently. With a focus on usability and performance, Dispozhe allows users to easily navigate through its features tailored for an optimal workflow.
 
-Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data stored. No identity required. End-to-end encrypted.
+## Features
+- **User-Friendly Interface**: Intuitive design that prioritizes user experience.
+- **Real-Time Collaboration**: Work simultaneously with team members on projects.
+- **Cross-Platform Compatibility**: Access Dispozhe on multiple devices.
+- **Robust Security Measures**: Ensuring user data is protected.
 
-## 🚀 Features
+## Architecture
+Dispozhe is built using a microservices architecture, allowing for scalability and flexibility. The core components include:
+- **Frontend**: Built with React.js for a dynamic and responsive user interface.
+- **Backend**: Node.js for efficient handling of API requests and data processing.
+- **Database**: MongoDB to store user data securely and accessibly.
 
-### Core Modes
-- **Duo** - Private two-person ephemeral chats
-- **Group** - Small multi-participant sessions with anonymous handles
-- **Live Board** - Classroom and meeting engagement with anonymous Q&A
-- **Broadcast** - One-to-many ephemeral announcements
-- **Drop** - Self-destructing file and text transfer
-- **Whisper** - Micro-messages that disappear after reading
-
-### Security & Privacy
-- **End-to-end AES-256 encryption** - Keys generated client-side, never transmitted
-- **Zero data retention** - No messages stored, no history kept
-- **No identity required** - No emails, phone numbers, or personal info
-- **One-time access** - Links, QR codes, and 6-digit codes expire after first use
-- **Auto-destruction** - Sessions terminate when timer expires or manually
-- **Privacy Guard** - Blur protection when tab/window loses focus
-
-## 🏗️ Architecture
-
-### Tech Stack
-- **Frontend**: React 18, TypeScript, TailwindCSS, Vite
-- **Backend**: FastAPI, Python 3.11+, SQLite, WebSockets
-- **Deployment**: Vercel (frontend), Render (backend)
-
-### Project Structure
-```
-
-dispozhe/
-├── frontend/           # React + TypeScript frontend
-│   ├── src/
-│   │   ├── components/ # UI components
-│   │   ├── hooks/      # Custom React hooks
-│   │   ├── pages/      # Route pages
-│   │   ├── services/   # API and WebSocket services
-│   │   ├── styles/     # CSS and animations
-│   │   ├── tests/      # Test suite
-│   │   └── utils/      # Utility functions
-│   └── public/         # Static assets
-│
-├── backend/            # FastAPI backend
-│   ├── app.py         # Main application
-│   ├── models/        # Database models
-│   └── utils/         # Utilities (code gen, expiry, WebSocket)
-│
-└── .github/           # GitHub Actions workflows
-
-```
-
-## 🛠️ Local Development
-
+## Setup
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- npm or yarn
+Before you begin, ensure you have met the following requirements:
+- Node.js installed on your machine.
+- MongoDB set up and running.
 
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Yothabo/dispozhe.git
+   cd dispozhe
+   ```
+2. Install the dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the application:
+   ```bash
+   npm start
+   ```
 
-Backend Setup
+## Deployment
+To deploy Dispozhe on your server, follow these steps:
+1. Build the application:
+   ```bash
+   npm run build
+   ```
+2. Ensure your server is configured to serve the static files from the `build` directory.
+3. Set up the production environment variables as needed.
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
+## Contribution Guidelines
+Contributions are welcome! Here’s how you can help:
+- Fork the repository.
+- Create a new branch: `git checkout -b feature/YourFeature`
+- Make your changes and commit them: `git commit -m 'Add some feature'`
+- Push your branch: `git push origin feature/YourFeature`
+- Open a pull request.
 
-Environment Variables
-
-Create .env in the frontend directory:
-
-```env
-VITE_API_URL=http://localhost:8080
-VITE_WS_URL=ws://localhost:8080
-```
-
-🧪 Testing
-
-Run all tests:
-
-```bash
-cd frontend
-npm test
-```
-
-Run specific test suites:
-
-```bash
-npm run test:api      # API tests
-npm run test:ws       # WebSocket tests
-npm run test:encryption # Encryption tests
-```
-
-📦 Building for Production
-
-Frontend
-
-```bash
-cd frontend
-npm run build
-# Output in frontend/dist/
-```
-
-Backend
-
-```bash
-cd backend
-# Deploy to Render or your preferred hosting
-```
-
-🚢 Deployment
-
-Frontend (Vercel)
-
-```bash
-vercel --prod
-```
-
-Backend (Render)
-
-1. Push to GitHub
-2. Connect repository to Render
-3. Set build command: pip install -r requirements.txt
-4. Set start command: uvicorn app:app --host 0.0.0.0 --port $PORT
-
-📊 API Endpoints
-
-Method Endpoint Description
-POST /session/create Create new session
-POST /session/code/{code} Join via code
-GET /session/{id}/status Get session status
-DELETE /session/{id} Terminate session
-WebSocket /ws/{id} Real-time communication
-
-🔒 Security Features
-
-· Connection limits: Max 2 participants per session
-· Code expiration: 30-second validity for join codes
-· Token validation: Short-lived connection tokens
-· Input sanitization: XSS prevention
-· CORS restrictions: Locked to specific domains
-· Rate limiting: Protection against abuse
-· No localStorage: Only in-memory session data
-
-🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines first.
-
-1. Fork the repository
-2. Create your feature branch (git checkout -b feature/amazing)
-3. Commit your changes (git commit -m 'Add amazing feature')
-4. Push to the branch (git push origin feature/amazing)
-5. Open a Pull Request
-
-📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-🙏 Acknowledgments
-
-· Built with privacy as the primary requirement
-· Inspired by the need for truly ephemeral communication
-· Thanks to all contributors and privacy advocates
-
-📬 Contact
-
-· Email: contact@driflly.app
-· Twitter: @driflly
-· GitHub: Yothabo/dispozhe
-
----
-
-Made with ❤️ for privacy.
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
