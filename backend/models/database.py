@@ -26,7 +26,8 @@ class Session(Base):
     participant_count = Column(Integer, default=1)
     status = Column(String, default="waiting")  # waiting, active, expired, terminated
     link_active = Column(Boolean, default=True)
-    terminated_at = Column(DateTime, nullable=True)  # Add this column
+    terminated_at = Column(DateTime, nullable=True)
+    chat_started_at = Column(DateTime, nullable=True)  # When both users connected
 
     def to_dict(self):
         return {
@@ -37,15 +38,19 @@ class Session(Base):
             "participant_count": self.participant_count,
             "status": self.status,
             "link_active": self.link_active,
-            "terminated_at": self.terminated_at.isoformat() if self.terminated_at else None
+            "terminated_at": self.terminated_at.isoformat() if self.terminated_at else None,
+            "chat_started_at": self.chat_started_at.isoformat() if self.chat_started_at else None
         }
-    
+
     def time_left(self) -> int:
         """Calculate time left in seconds"""
         if self.status == "terminated":
             return 0
-        if datetime.utcnow() >= self.expires_at:
+        if self.chat_started_at and datetime.utcnow() >= self.expires_at:
             return 0
+        if not self.chat_started_at:
+            # Still waiting, return full duration
+            return self.duration_minutes * 60
         return int((self.expires_at - datetime.utcnow()).total_seconds())
 
 # Create tables (this will add the new column)

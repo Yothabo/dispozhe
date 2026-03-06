@@ -24,3 +24,4 @@ class SessionStatus(BaseModel):
     expires_at: datetime
     time_left_seconds: int
     created_at: Optional[datetime] = None
+    chat_started_at: Optional[datetime] = None

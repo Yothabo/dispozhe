@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import logging
@@ -8,14 +7,12 @@ import json
 import asyncio
 import traceback
 from contextlib import asynccontextmanager
-from collections import defaultdict
-from typing import List, Dict, Optional
 
 from models.database import get_db, Session as DBSession, SessionLocal
-from models.session import SessionCreate, SessionResponse, SessionExtend, SessionStatus
+from models.session import SessionCreate, SessionResponse, SessionStatus
 from utils.tokens import generate_session_id
-from utils.expiry import ExpiryService
-from utils.websocket_manager import ConnectionManager
+from services.expiry import ExpiryService
+from services.websocket import WebSocketManager
 from utils.code_generator import CodeGenerator
 
 logging.basicConfig(level=logging.INFO)
@@ -24,15 +21,12 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://driflly.vercel.app/"
 MAX_DURATION = 24 * 60
 
-message_queue: Dict[str, List[dict]] = defaultdict(list)
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting backend...")
     app.state.expiry_service = ExpiryService()
     app.state.expiry_service.start()
-    app.state.manager = ConnectionManager()
-    app.state.manager.set_expiry_service(app.state.expiry_service)
+    app.state.manager = WebSocketManager()
     app.state.code_generator = CodeGenerator()
     logger.info("Backend started successfully")
     yield
@@ -74,15 +68,18 @@ async def create_session(request: SessionCreate, db: Session = Depends(get_db)):
         raise HTTPException(400, f"Duration must be between 1 and {MAX_DURATION} minutes")
 
     session_id = generate_session_id()
-    expires_at = datetime.utcnow() + timedelta(minutes=request.duration)
+    # Set initial expiry far in the future - will be updated when both users connect
+    future_expiry = datetime.utcnow() + timedelta(days=365)  # 1 year in future
 
     db_session = DBSession(
         id=session_id,
-        expires_at=expires_at,
+        created_at=datetime.utcnow(),
+        expires_at=future_expiry,  # Temporary far-future expiry
         duration_minutes=request.duration,
         participant_count=1,
         status="waiting",
-        link_active=True
+        link_active=True,
+        chat_started_at=None  # Track when chat actually starts
     )
 
     db.add(db_session)
@@ -90,18 +87,18 @@ async def create_session(request: SessionCreate, db: Session = Depends(get_db)):
     db.refresh(db_session)
 
     link = f"{BASE_URL}c/{session_id}"
-    code = app.state.code_generator.generate_code(session_id, expires_at, "")
+    code = app.state.code_generator.generate_code(session_id, future_expiry, "")
 
     logger.info(f"Session created: {session_id}, duration: {request.duration}min, code: {code}")
 
     return SessionResponse(
         session_id=session_id,
         duration=request.duration,
-        expires_at=expires_at,
+        expires_at=future_expiry,  # Send far future date for waiting screen
         link=link,
         status="waiting",
         code=code,
-        time_left_seconds=request.duration * 60
+        time_left_seconds=request.duration * 60  # Send intended duration to frontend
     )
 
 @app.post("/session/code/{code}")
@@ -118,23 +115,30 @@ async def join_by_code(code: str):
         if not session:
             raise HTTPException(404, "Session not found")
 
-        if session.status == "expired" or datetime.utcnow() > session.expires_at:
+        if session.status == "expired" or (session.chat_started_at and datetime.utcnow() > session.expires_at):
             raise HTTPException(410, "Session expired")
 
         if session.participant_count >= 2:
             raise HTTPException(400, "Session is full")
 
+        # If this is the second participant, start the chat timer
+        if session.participant_count == 1:
+            now = datetime.utcnow()
+            session.chat_started_at = now
+            session.expires_at = now + timedelta(minutes=session.duration_minutes)
+            session.status = "active"
+        
         session.participant_count = 2
-        session.status = "active"
         session.link_active = False
         db.commit()
 
-        logger.info(f"User joined session {session.id} via code {code}")
+        logger.info(f"User joined session {session.id} via code {code}. Chat started at {session.chat_started_at}")
 
         return {
             "session_id": session.id,
             "encryption_key": result["encryptionKey"],
-            "status": "active"
+            "status": "active",
+            "expires_at": session.expires_at.isoformat() if session.expires_at else None
         }
     finally:
         db.close()
@@ -146,13 +150,18 @@ async def get_session_status(session_id: str, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(404, "Session not found")
 
-    if datetime.utcnow() > session.expires_at:
-        session.status = "expired"
-        session.link_active = False
-        db.commit()
-
-    time_left = int((session.expires_at - datetime.utcnow()).total_seconds())
-    if time_left < 0:
+    # Calculate time left based on when chat started
+    if session.chat_started_at and session.status == "active":
+        time_left = int((session.expires_at - datetime.utcnow()).total_seconds())
+        if time_left <= 0:
+            session.status = "expired"
+            session.link_active = False
+            db.commit()
+            time_left = 0
+    elif session.status == "waiting":
+        # For waiting sessions, return the full duration
+        time_left = session.duration_minutes * 60
+    else:
         time_left = 0
 
     return SessionStatus(
@@ -160,8 +169,9 @@ async def get_session_status(session_id: str, db: Session = Depends(get_db)):
         participant_count=session.participant_count,
         status=session.status,
         expires_at=session.expires_at,
-        time_left_seconds=time_left,
-        created_at=session.created_at
+        time_left_seconds=max(0, time_left),
+        created_at=session.created_at,
+        chat_started_at=session.chat_started_at
     )
 
 @app.post("/session/{session_id}/join")
@@ -171,7 +181,7 @@ async def join_session(session_id: str, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(404, "Session not found")
 
-    if datetime.utcnow() > session.expires_at:
+    if session.status == "expired" or (session.chat_started_at and datetime.utcnow() > session.expires_at):
         session.status = "expired"
         session.link_active = False
         db.commit()
@@ -180,17 +190,24 @@ async def join_session(session_id: str, db: Session = Depends(get_db)):
     if session.participant_count >= 2:
         raise HTTPException(400, "Session is full")
 
+    # If this is the second participant, start the chat timer
+    if session.participant_count == 1:
+        now = datetime.utcnow()
+        session.chat_started_at = now
+        session.expires_at = now + timedelta(minutes=session.duration_minutes)
+        session.status = "active"
+    
     session.participant_count = 2
-    session.status = "active"
     session.link_active = False
     db.commit()
 
-    logger.info(f"Second participant joined session: {session_id}")
+    logger.info(f"Second participant joined session: {session_id}. Chat started at {session.chat_started_at}")
 
     return {
         "session_id": session.id,
         "status": "active",
-        "message": "Joined successfully"
+        "message": "Joined successfully",
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None
     }
 
 @app.delete("/session/{session_id}")
@@ -202,16 +219,16 @@ async def terminate_session(session_id: str, db: Session = Depends(get_db)):
 
     logger.info(f"Termination requested for session {session_id}")
 
-    if session_id in message_queue:
-        del message_queue[session_id]
-
+    # Terminate WebSocket connections
     try:
         await app.state.manager.terminate_session(session_id)
     except Exception as e:
         logger.error(f"Error during WebSocket termination: {e}")
 
+    # Clean up code
     app.state.code_generator.remove_by_session(session_id)
 
+    # Delete from database
     try:
         db.delete(session)
         db.commit()
@@ -237,49 +254,51 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             await websocket.close(code=1008, reason="Session not found")
             return
 
-        logger.info(f"Session {session_id} found, status: {session.status}")
-
-        if session.status == "expired" or session.status == "terminated" or datetime.utcnow() > session.expires_at:
+        if session.status == "expired" or (session.chat_started_at and datetime.utcnow() > session.expires_at):
             logger.warning(f"Session {session_id} expired")
             await websocket.close(code=1008, reason="Session expired")
             return
 
-        current_count = app.state.manager.get_connection_count(session_id)
-        if current_count >= 2:
-            logger.warning(f"Session {session_id} already has 2 connections - rejecting new connection")
+        # Check connection limit
+        if app.state.manager.get_connection_count(session_id) >= 2:
+            logger.warning(f"Session {session_id} already has 2 connections")
             await websocket.close(code=1008, reason="Maximum connections reached")
             return
 
         await websocket.accept()
         logger.info(f"WebSocket accepted for session {session_id}")
 
+        # Connect
         await app.state.manager.connect(websocket, session_id)
         connection_count = app.state.manager.get_connection_count(session_id)
-        logger.info(f"WebSocket connected for session {session_id}, total connections: {connection_count}")
-
-        time_left = session.time_left() if hasattr(session, 'time_left') else 300
+        
+        # Calculate time left based on when chat started
+        if session.chat_started_at and session.status == "active":
+            time_left = int((session.expires_at - datetime.utcnow()).total_seconds())
+        else:
+            time_left = session.duration_minutes * 60
+        
+        # Send connected message
         await websocket.send_text(json.dumps({
             "type": "connected",
             "session_id": session_id,
             "participant_count": session.participant_count,
             "connection_count": connection_count,
-            "time_left": time_left,
+            "time_left": max(0, time_left),
+            "chat_started_at": session.chat_started_at.isoformat() if session.chat_started_at else None,
             "timestamp": datetime.utcnow().isoformat()
         }))
 
+        # Heartbeat task
         async def heartbeat():
             try:
                 while True:
-                    await asyncio.sleep(15)  # More frequent heartbeats (15s instead of 25s)
-                    try:
-                        if websocket.client_state.value == 1:  # Still connected
-                            await websocket.send_text(json.dumps({
-                                "type": "ping",
-                                "timestamp": datetime.utcnow().isoformat()
-                            }))
-                    except Exception:
-                        # Connection likely dead, exit heartbeat
-                        break
+                    await asyncio.sleep(15)
+                    if websocket.client_state.value == 1:
+                        await websocket.send_text(json.dumps({
+                            "type": "ping",
+                            "timestamp": datetime.utcnow().isoformat()
+                        }))
             except Exception:
                 pass
 
@@ -288,45 +307,31 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         try:
             while True:
                 message = await websocket.receive_text()
-                logger.debug(f"Received message from {session_id}: {message[:50]}")
+                message_data = json.loads(message)
 
-                try:
-                    message_data = json.loads(message)
-
-                    if message_data.get('type') == 'read_receipt':
-                        if hasattr(app.state.manager, 'mark_as_read'):
-                            await app.state.manager.mark_as_read(
-                                session_id,
-                                message_data['message_id'],
-                                websocket
-                            )
-                    elif message_data.get('type') == 'file_viewed':
-                        if hasattr(app.state.manager, 'handle_file_viewed'):
-                            await app.state.manager.handle_file_viewed(
-                                session_id,
-                                message_data['file_id'],
-                                websocket
-                            )
-                    else:
-                        status = await app.state.manager.send_message(
-                            session_id,
-                            message_data,
-                            websocket
-                        )
-
-                        if message_data.get('id'):
-                            await websocket.send_text(json.dumps({
-                                'type': 'delivery_status',
-                                'message_id': message_data.get('id'),
-                                'status': status['status'],
-                                'timestamp': datetime.utcnow().isoformat()
-                            }))
-                except json.JSONDecodeError:
-                    await app.state.manager.broadcast_to_session(
+                if message_data.get('type') == 'read_receipt':
+                    # Handle read receipt
+                    pass
+                elif message_data.get('type') == 'file_viewed':
+                    await app.state.manager.handle_file_viewed(
                         session_id,
-                        message,
-                        exclude=websocket
+                        message_data['file_id'],
+                        websocket
                     )
+                else:
+                    status = await app.state.manager.send_message(
+                        session_id,
+                        message_data,
+                        websocket
+                    )
+
+                    if message_data.get('id'):
+                        await websocket.send_text(json.dumps({
+                            'type': 'delivery_status',
+                            'message_id': message_data['id'],
+                            'status': status['status'],
+                            'timestamp': datetime.utcnow().isoformat()
+                        }))
 
         except WebSocketDisconnect:
             logger.info(f"WebSocket disconnected from session {session_id}")
