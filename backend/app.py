@@ -271,12 +271,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             try:
                 while True:
                     await asyncio.sleep(25)
-                    await websocket.send_text(json.dumps({
-                        "type": "ping",
-                        "timestamp": datetime.utcnow().isoformat()
-                    }))
-            except Exception as e:
-                logger.debug(f"Heartbeat stopped for session {session_id}")
+                    if websocket.client_state.value == 1:  # Still connected
+                        await websocket.send_text(json.dumps({
+                            "type": "ping",
+                            "timestamp": datetime.utcnow().isoformat()
+                        }))
+            except Exception:
+                pass
 
         heartbeat_task = asyncio.create_task(heartbeat())
 
@@ -284,10 +285,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             while True:
                 message = await websocket.receive_text()
                 logger.debug(f"Received message from {session_id}: {message[:50]}")
-                
+
                 try:
                     message_data = json.loads(message)
-                    
+
                     if message_data.get('type') == 'read_receipt':
                         if hasattr(app.state.manager, 'mark_as_read'):
                             await app.state.manager.mark_as_read(
@@ -308,7 +309,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             message_data,
                             websocket
                         )
-                        
+
                         if message_data.get('id'):
                             await websocket.send_text(json.dumps({
                                 'type': 'delivery_status',
@@ -322,10 +323,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         message,
                         exclude=websocket
                     )
-                    
+
         except WebSocketDisconnect:
+            logger.info(f"WebSocket disconnected from session {session_id} - this is NOT termination")
             await app.state.manager.disconnect(websocket, session_id)
-            logger.info(f"WebSocket disconnected from session {session_id}")
         except Exception as e:
             logger.error(f"WebSocket error for session {session_id}: {e}")
             await app.state.manager.disconnect(websocket, session_id)

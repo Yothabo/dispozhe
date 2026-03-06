@@ -70,6 +70,11 @@ class ConnectionManager:
         if session_id not in self.active_connections:
             return
 
+        # Skip if session is being terminated
+        if session_id in self.terminating_sessions:
+            logger.info(f"Disconnect ignored during termination for session {session_id}")
+            return
+
         if websocket in self.active_connections[session_id]:
             self.active_connections[session_id].remove(websocket)
 
@@ -212,13 +217,12 @@ class ConnectionManager:
 
         logger.info(f"Terminating session {session_id} with {len(connections)} connections")
 
-        # Send participant_left to all participants first
-        # This is what the frontend expects for non-initiator
+        # Send participant_left to all participants
         await self.broadcast_to_session(
             session_id,
             json.dumps({
                 "type": "participant_left",
-                "participant_count": 1,  # The remaining participant sees count 1 (themselves)
+                "participant_count": 1,
                 "timestamp": datetime.utcnow().isoformat()
             }),
             exclude=None
