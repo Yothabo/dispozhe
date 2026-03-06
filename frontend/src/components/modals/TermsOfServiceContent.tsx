@@ -9,7 +9,7 @@ const TermsOfServiceContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">1. Service description</h4>
         <p className="text-sm leading-relaxed">
-          Driflly provides ephemeral, encrypted messaging rooms that expire after a predetermined time or upon manual termination. The service is provided "as is" without warranties.
+          Driflly provides ephemeral, encrypted messaging rooms that expire after a predetermined time or upon manual termination. The service is provided &quot;as is&quot; without warranties.
         </p>
       </div>
       <div className="space-y-4">

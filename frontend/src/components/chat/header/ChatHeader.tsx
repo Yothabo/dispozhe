@@ -18,6 +18,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   onExtend,
   isTerminated = false
 }) => {
+  // Determine timer color based on time left
+  const getTimerColor = () => {
+    if (timeLeft < 60) return 'text-red-400'; // Less than 1 minute
+    if (timeLeft < 180) return 'text-yellow-400'; // Less than 3 minutes
+    return 'text-sky';
+  };
+
   return (
     <div className="bg-white/5 border-b border-white/10 px-4 py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -31,9 +38,10 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             onClick={onExtend}
             disabled={isTerminated}
             className="flex items-center gap-1.5 text-grey hover:text-white transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Time remaining (synced with server)"
           >
-            <FaClock className="w-3 h-3" />
-            <span>{formatTime(timeLeft)}</span>
+            <FaClock className={`w-3 h-3 ${getTimerColor()}`} />
+            <span className={`font-mono ${getTimerColor()}`}>{formatTime(timeLeft)}</span>
           </button>
         </div>
 
@@ -48,7 +56,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ChatHeader
+export default ChatHeader;

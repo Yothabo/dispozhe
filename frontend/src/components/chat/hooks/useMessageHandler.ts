@@ -5,7 +5,7 @@ interface UseMessageHandlerProps {
   isTerminating: boolean;
   terminationCompleted: boolean;
   showSecondUserTermination: boolean;
-  onMessage: (message: any) => void;
+  onMessage: (message: Record<string, unknown>) => void;
   connectionId: React.MutableRefObject<string>;
 }
 

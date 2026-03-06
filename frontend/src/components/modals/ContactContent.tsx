@@ -10,7 +10,7 @@ const ContactContent: React.FC = () => {
         </div>
         <h3 className="text-white text-xl font-bold mb-2">Under Maintenance</h3>
         <p className="text-grey text-sm">
-          Our social channels are currently being set up. We'll be here soon!
+          Our social channels are currently being set up. We&apos;ll be here soon!
         </p>
       </div>
 

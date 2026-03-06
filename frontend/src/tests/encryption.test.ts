@@ -16,7 +16,7 @@ describe('Message Encryption', () => {
       }
       const decoder = new TextDecoder();
       return decoder.decode(bytes);
-    } catch (e) {
+    } catch {
       return '[Encrypted]';
     }
   }

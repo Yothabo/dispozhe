@@ -15,7 +15,7 @@ const PrivacyPolicyContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">2. Message content</h4>
         <p className="text-sm leading-relaxed">
-          Messages are encrypted end-to-end using AES-256-GCM. Encryption keys are generated on users' devices and are not transmitted to or stored on servers. The server relays encrypted data without access to plaintext.
+          Messages are encrypted end-to-end using AES-256-GCM. Encryption keys are generated on users&apos; devices and are not transmitted to or stored on servers. The server relays encrypted data without access to plaintext.
         </p>
       </div>
       <div className="space-y-4">

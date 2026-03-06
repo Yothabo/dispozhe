@@ -19,7 +19,7 @@ const HowItWorksSection: React.FC = () => {
             <div className="step-content">
               <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-white mb-1 sm:mb-2">Session creation</h3>
               <p className="text-grey text-xs sm:text-sm lg:text-base leading-relaxed font-light">
-                Users initiate a chat by selecting a duration. An encryption key is generated locally on the user's device and is never transmitted to servers.
+                Users initiate a chat by selecting a duration. An encryption key is generated locally on the user&apos;s device and is never transmitted to servers.
               </p>
             </div>
             <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl sm:rounded-2xl bg-sky/10 flex items-center justify-center">

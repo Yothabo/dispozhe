@@ -10,13 +10,13 @@ const WhySection: React.FC = () => {
           </h2>
           <div className="space-y-6 text-left">
             <p className="text-grey text-base sm:text-lg leading-relaxed font-light">
-              Persistent chat histories create risk. Every message stored is a message that can be leaked, subpoenaed, or exposed. Driflly is designed for conversations that do not leave a record — not because the content is sensitive, but because permanence is not always necessary or desirable.
+              The retention of persistent chat histories introduces inherent risks, as each stored message presents a potential vulnerability to leakage, subpoena, or unauthorized exposure. Driflly has been specifically engineered to facilitate ephemeral conversations, not due to the sensitive nature of the content, but rather because permanent record-keeping is often neither essential nor advantageous.
             </p>
             <p className="text-grey text-base sm:text-lg leading-relaxed font-light">
-              The system retains no data. Session metadata exists only in memory while a chat is active and is purged upon termination. No backups. No logs. No recovery.
+              Our system is designed to retain no data. Session metadata is exclusively held in memory during an active chat and is systematically purged upon session termination. This architecture precludes the existence of backups, logs, or recovery mechanisms.
             </p>
             <p className="text-grey text-base sm:text-lg leading-relaxed font-light">
-              This is not a feature added for compliance. It is the foundational design principle.
+              This design is not merely a compliance feature; it represents a fundamental principle embedded in the core architecture of our system.
             </p>
           </div>
         </div>

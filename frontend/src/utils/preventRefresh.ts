@@ -1,9 +1,20 @@
-// This utility prevents accidental page refreshes during active chat
-export const preventRefresh = (message: string = "This will disconnect you from the chat. Are you sure?") => {
+// Store the current termination state globally
+let isTerminating = false;
+
+export const setTerminatingState = (terminating: boolean) => {
+  isTerminating = terminating;
+};
+
+export const preventRefresh = () => {
   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    // Don't show warning if we're terminating
+    if (isTerminating) {
+      return;
+    }
+    
     e.preventDefault();
-    e.returnValue = message;
-    return message;
+    e.returnValue = 'This will terminate your chat session. Are you sure?';
+    return e.returnValue;
   };
 
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -13,34 +24,23 @@ export const preventRefresh = (message: string = "This will disconnect you from 
   };
 };
 
-// This completely disables F5 and Ctrl+R (use with caution)
+// Disable refresh keys (F5, Ctrl+R, etc.)
 export const disableRefreshKeys = () => {
   const handleKeyDown = (e: KeyboardEvent) => {
-    // F5
-    if (e.key === 'F5') {
-      e.preventDefault();
-      return false;
+    // Don't block keys if we're terminating
+    if (isTerminating) {
+      return;
     }
-    // Ctrl+R / Cmd+R
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    
+    if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
       e.preventDefault();
-      return false;
-    }
-    // Ctrl+Shift+R / Cmd+Shift+R
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'r') {
-      e.preventDefault();
-      return false;
-    }
-    // Alt+F4 (can't prevent completely but we can try)
-    if (e.altKey && e.key === 'F4') {
-      e.preventDefault();
-      return false;
+      e.stopPropagation();
     }
   };
 
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keydown', handleKeyDown, { capture: true });
   
   return () => {
-    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keydown', handleKeyDown, { capture: true });
   };
 };

@@ -1,13 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import wsService from '../../services/websocket';
 
+interface WebSocketMessage {
+  type: string;
+  connection_count?: number;
+  data?: string;
+  [key: string]: unknown;
+}
+
 interface SimpleChatProps {
   sessionId: string;
-  userId: string;
+  _userId?: string; // kept for API compatibility
   onTerminate: () => void;
 }
 
-const SimpleChat: React.FC<SimpleChatProps> = ({ sessionId, userId, onTerminate }) => {
+const SimpleChat: React.FC<SimpleChatProps> = ({ sessionId, onTerminate }) => {
   const [messages, setMessages] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -15,18 +22,16 @@ const SimpleChat: React.FC<SimpleChatProps> = ({ sessionId, userId, onTerminate 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-
-    const handleMessage = (data: any) => {
-
+    const handleMessage = (data: WebSocketMessage) => {
       if (data.type === 'connected') {
         setIsConnected(true);
-        setConnectionCount(data.connection_count);
+        setConnectionCount(data.connection_count || 0);
         addMessage(`✅ Connected to session (${data.connection_count}/2 users)`);
-      } else if (data.type === 'message') {
+      } else if (data.type === 'message' && data.data) {
         try {
-          const text = atob(data.data);
+          const text = atob(data.data as string);
           addMessage(`👤 Other: ${text}`);
-        } catch (e) {
+        } catch {
           addMessage(`📦 Received: ${data.type}`);
         }
       } else if (data.type === 'ping') {
@@ -37,8 +42,8 @@ const SimpleChat: React.FC<SimpleChatProps> = ({ sessionId, userId, onTerminate 
     };
 
     wsService.addMessageHandler(handleMessage);
-    
-    wsService.connect(sessionId).catch(err => {
+
+    wsService.connect(sessionId).catch((err: Error) => {
       console.error('Connection failed:', err);
       addMessage(`❌ Connection failed: ${err.message}`);
     });

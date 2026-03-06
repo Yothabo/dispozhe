@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface UseChatTimerProps {
-  initialDuration: number;
+  initialDuration: number; // in minutes
   isConnected: boolean;
   onTimeUp: () => void;
   sessionId: string;
@@ -15,120 +15,124 @@ export const useChatTimer = ({
 }: UseChatTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(initialDuration * 60);
   const [timeUp, setTimeUp] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout>();
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
-  const pollingActive = useRef<boolean>(true);
-  const sessionEnded = useRef<boolean>(false);
-  const timeUpTriggered = useRef<boolean>(false);
+  const [serverTimeLeft, setServerTimeLeft] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timeUpCalled = useRef(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncRef = useRef<number>(Date.now());
+  const driftRef = useRef<number>(0);
 
-  const formatTime = (seconds: number): string => {
+  // Format time as MM:SS
+  const formatTime = useCallback((seconds: number): string => {
+    if (seconds < 0) seconds = 0;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const stopAllTimers = useCallback(() => {
-    pollingActive.current = false;
-    sessionEnded.current = true;
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = undefined;
-    }
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = undefined;
-    }
   }, []);
 
-  const handleTimeUp = useCallback(() => {
-    if (timeUpTriggered.current) return;
-    timeUpTriggered.current = true;
-    setTimeUp(true);
-    stopAllTimers();
-    onTimeUp();
-  }, [onTimeUp, stopAllTimers]);
-
-  const syncWithBackend = useCallback(async () => {
-    if (!sessionId || sessionEnded.current || !pollingActive.current) return;
+  // Sync with server time
+  const syncWithServer = useCallback(async () => {
+    if (!sessionId) return;
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/session/${sessionId}/status`);
-      
-      if (!pollingActive.current) return;
+      const data = await response.json();
 
-      if (response.status === 404) {
-        handleTimeUp();
-        return;
-      }
+      if (data.time_left_seconds !== undefined) {
+        const serverTime = data.time_left_seconds;
+        setServerTimeLeft(serverTime);
 
-      if (response.ok) {
-        const data = await response.json();
-        const backendTimeLeft = data.time_left_seconds;
-        
-        if (backendTimeLeft !== undefined) {
-          setTimeLeft(backendTimeLeft);
+        // Calculate drift between local and server time
+        const now = Date.now();
+        if (lastSyncRef.current) {
+          const elapsed = Math.floor((now - lastSyncRef.current) / 1000);
+          const expectedDrift = serverTime - (timeLeft - elapsed);
+          driftRef.current = expectedDrift;
+        }
+        lastSyncRef.current = now;
 
-          if (backendTimeLeft <= 0 && !timeUpTriggered.current) {
-            handleTimeUp();
-          }
+        // Update local time to match server
+        setTimeLeft(serverTime);
+
+        if (serverTime <= 0 && !timeUpCalled.current) {
+          setTimeUp(true);
+          timeUpCalled.current = true;
+          onTimeUp();
         }
       }
     } catch (error) {
-      console.error('Failed to sync timer with backend:', error);
+      console.error('Failed to sync timer with server:', error);
     }
-  }, [sessionId, handleTimeUp]);
+  }, [sessionId, timeLeft, onTimeUp]);
 
+  // Initial sync and periodic polling
   useEffect(() => {
-    pollingActive.current = true;
-    sessionEnded.current = false;
-    timeUpTriggered.current = false;
+    if (!sessionId || !isConnected) return;
 
-    if (!isConnected) return;
+    // Sync immediately
+    syncWithServer();
 
-    syncWithBackend();
-
-    const scheduleNextSync = () => {
-      if (!pollingActive.current || sessionEnded.current) return;
-      
-      syncTimeoutRef.current = setTimeout(() => {
-        syncWithBackend();
-        scheduleNextSync();
-      }, 60000);
-    };
-
-    scheduleNextSync();
+    // Poll server every 10 seconds for accurate time
+    pollingRef.current = setInterval(syncWithServer, 10000);
 
     return () => {
-      pollingActive.current = false;
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     };
-  }, [isConnected, syncWithBackend]);
+  }, [sessionId, isConnected, syncWithServer]);
 
+  // Local countdown timer
   useEffect(() => {
-    if (timeUp || !isConnected || sessionEnded.current) return;
+    if (timeUp || !isConnected) return;
 
+    // Clear existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // Start new timer
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1 && !timeUpTriggered.current) {
-          handleTimeUp();
+        const newTime = prev - 1;
+
+        // Check if time is up
+        if (newTime <= 0 && !timeUpCalled.current) {
+          setTimeUp(true);
+          timeUpCalled.current = true;
+          onTimeUp();
+
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
           return 0;
         }
-        return prev - 1;
+
+        return newTime;
       });
     }, 1000);
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [timeUp, isConnected, handleTimeUp]);
+  }, [isConnected, timeUp, onTimeUp]);
 
   const stopTimer = useCallback(() => {
-    stopAllTimers();
-  }, [stopAllTimers]);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
 
   return {
     timeLeft,
@@ -136,6 +140,6 @@ export const useChatTimer = ({
     timeUp,
     setTimeUp,
     stopTimer,
-    syncWithBackend
+    serverTimeLeft
   };
 };

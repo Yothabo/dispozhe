@@ -4,7 +4,7 @@ import { FaPaperPlane, FaPaperclip, FaSmile } from 'react-icons/fa'
 
 interface ChatInputProps {
   inputText: string
-  isConnected: boolean
+  _isConnected?: boolean // kept for API compatibility
   isSendingFile: boolean
   keyboardHeight: number
   onTyping: (e: ChangeEvent<HTMLInputElement>) => void
@@ -15,9 +15,12 @@ interface ChatInputProps {
   placeholder: string
 }
 
+type EmojiData = {
+  emoji: string;
+};
+
 const ChatInput: React.FC<ChatInputProps> = ({
   inputText,
-  isConnected,
   isSendingFile,
   keyboardHeight,
   onTyping,
@@ -32,22 +35,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      onSend()
+      e.preventDefault();
+      onSend();
     }
-  }
+  };
 
-  const handleEmojiClick = (emojiData: any) => {
+  const handleEmojiClick = (emojiData: EmojiData) => {
     const newText = inputText + emojiData.emoji;
-    // Create a synthetic event to pass to onTyping
     const event = {
       target: { value: newText }
     } as ChangeEvent<HTMLInputElement>;
     onTyping(event);
-    // Keep picker open after selecting emoji
   };
 
-  // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
@@ -62,7 +62,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   }, []);
 
   return (
-    <div 
+    <div
       className="bg-navy border-t border-white/5"
       style={{ marginBottom: keyboardHeight }}
     >
@@ -77,7 +77,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           >
             <FaPaperclip className="w-5 h-5" />
           </button>
-          
+
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -87,7 +87,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           >
             <FaSmile className="w-5 h-5" />
           </button>
-          
+
           <input
             ref={inputRef}
             type="text"
@@ -98,7 +98,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             disabled={disabled || isSendingFile}
             className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/50 focus:outline-none focus:border-sky/50 disabled:opacity-50"
           />
-          
+
           <button
             type="button"
             onClick={onSend}
@@ -110,12 +110,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </button>
         </div>
 
-        {/* Emoji Picker */}
         {showEmojiPicker && (
-          <div 
+          <div
             ref={emojiPickerRef}
             className="absolute bottom-full mb-2 left-0 z-50"
-            style={{ 
+            style={{
               maxWidth: '350px',
               boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
             }}
@@ -127,19 +126,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
               searchPlaceholder="Search emojis..."
               width="100%"
               height={400}
-              previewConfig={{
-                showPreview: false
-              }}
-              skinTonesDisabled={true}
+              previewConfig={{ showPreview: false }}
+              skinTonesDisabled
               searchDisabled={false}
               emojiStyle={EmojiStyle.NATIVE}
-              lazyLoadEmojis={true}
+              lazyLoadEmojis
             />
           </div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ChatInput
+export default ChatInput;

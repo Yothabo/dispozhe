@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { FaSpinner, FaTrash, FaArrowLeft } from 'react-icons/fa'
-import { useNavigate } from 'react-router-dom'
 
 import { preventChatReload } from '../../utils/preventReload'
 import { useNavigationGuard } from '../../hooks/useNavigationGuard'
@@ -9,12 +8,11 @@ import ShareableLinkCard from './cards/ShareableLinkCard'
 import QRModal from '../modals/QRModal'
 import CodeModal from '../modals/CodeModal'
 import TerminateSessionModal from '../modals/TerminateSessionModal'
-import TerminationSteps from './termination/TerminationSteps'
 
 interface WaitingScreenProps {
   link: string
-  duration: number
-  sessionId: string
+  _duration: number
+  _sessionId: string
   code?: string
   onCopy: () => void
   onCopyCode?: () => void
@@ -23,18 +21,15 @@ interface WaitingScreenProps {
 
 const WaitingScreen: React.FC<WaitingScreenProps> = ({
   link,
-  duration,
-  sessionId,
   code,
   onCopy,
   onCopyCode,
   onTerminate
 }) => {
-  const navigate = useNavigate();
   const [showQRModal, setShowQRModal] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showTerminateModal, setShowTerminateModal] = useState(false);
-  const [isDestroyed, setIsDestroyed] = useState(false);
+  const [_isDestroyed, setIsDestroyed] = useState(false);
   const [itemStates, setItemStates] = useState([
     { id: 1, status: 'pending' },
     { id: 2, status: 'pending' },
@@ -126,7 +121,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
                   link={link}
                   code={code}
                   onCopy={onCopy}
-                  onCopyCode={onCopyCode}
+                  _onCopyCode={onCopyCode}
                   onOpenQR={() => setShowQRModal(true)}
                   onOpenCode={() => setShowCodeModal(true)}
                 />

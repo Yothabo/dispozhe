@@ -48,12 +48,13 @@ const CodeEntryPage: React.FC = () => {
     try {
       const result = await api.joinWithCode(fullCode);
       navigate(`/waiting/${result.session_id}#${result.encryption_key}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Code entry error:', err);
-      if (err.message.includes('404') || err.message.includes('not found') || err.message.includes('Invalid or expired code')) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('404') || errorMessage.includes('not found') || errorMessage.includes('Invalid or expired code')) {
         setError('No active chat linked to this code. Please ask for the correct code.');
       } else {
-        setError(err.message || 'Failed to join. Please try again.');
+        setError(errorMessage || 'Failed to join. Please try again.');
       }
     } finally {
       setIsLoading(false);

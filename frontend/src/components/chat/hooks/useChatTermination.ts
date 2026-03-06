@@ -5,16 +5,15 @@ import wsService from '../../../services/websocket';
 import { notifyManagement } from '../../NotificationCenter';
 
 export const useChatTermination = (
-  sessionId: string, 
-  onTerminate: () => void,
-  stopTimer: () => void
+  sessionId: string,
+  _onTerminate?: () => void, // kept for API compatibility, prefixed with underscore
+  stopTimer?: () => void
 ) => {
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [terminationCompleted, setTerminationCompleted] = useState(false);
   const [otherUserLeft, setOtherUserLeft] = useState(false);
   const [showSecondUserTermination, setShowSecondUserTermination] = useState(false);
-  const terminationMessageShown = useRef<boolean>(false);
   const mountedRef = useRef(true);
   const animationTimeouts = useRef<NodeJS.Timeout[]>([]);
 
@@ -39,7 +38,7 @@ export const useChatTermination = (
 
     setIsTerminating(true);
     setShowTerminateModal(false);
-    stopTimer();
+    if (stopTimer) stopTimer();
 
     sessionStorage.removeItem(`Driflly_messages_${sessionId}`);
 
@@ -47,7 +46,9 @@ export const useChatTermination = (
 
     try {
       wsService.sendMessage({ type: 'participant_leaving', timestamp: Date.now() });
-    } catch (e) {}
+    } catch {
+      // Ignore send errors
+    }
 
     notifyManagement('Session termination initiated', 'info');
 
@@ -96,7 +97,7 @@ export const useChatTermination = (
     if (showSecondUserTermination || terminationCompleted) return;
 
     setShowSecondUserTermination(true);
-    stopTimer();
+    if (stopTimer) stopTimer();
 
     setSecondUserSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
 
@@ -150,7 +151,6 @@ export const useChatTermination = (
     terminationSteps,
     handleInitiatorTerminate,
     handleSecondUserTerminate,
-    handleParticipantLeaving,
-    terminationMessageShown: terminationMessageShown.current
+    handleParticipantLeaving
   };
 };

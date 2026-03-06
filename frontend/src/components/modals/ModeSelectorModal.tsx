@@ -31,59 +31,83 @@ const ModeSelectorModal: React.FC<ModeSelectorModalProps> = ({ isOpen, onClose, 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-sm" onClick={onClose}>
-      <div className="glass rounded-2xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
-        {/* Header with close button */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Choose mode</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-grey hover:text-white transition-colors"
-          >
-            <FaTimes className="w-5 h-5" />
-          </button>
-        </div>
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
 
-        {/* Mode options grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {modes.map((mode) => {
-            const Icon = mode.icon;
-            const isSelected = selectedMode === mode.id;
-            
-            return (
-              <button
-                key={mode.id}
-                onClick={() => handleModeSelect(mode.id)}
-                disabled={!mode.available}
-                className={`
-                  p-4 rounded-xl border-2 transition-all text-left w-full
-                  ${mode.available 
-                    ? isSelected
-                      ? 'border-sky bg-sky/10'
-                      : 'border-white/10 hover:border-sky/50 bg-white/5'
-                    : 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
-                  }
-                `}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    mode.available ? 'bg-sky/10' : 'bg-white/5'
-                  }`}>
-                    <Icon className={`w-5 h-5 ${mode.available ? 'text-sky' : 'text-grey'}`} />
+  return (
+    <>
+      {/* Backdrop - interactive element with role="button" */}
+      <div
+        className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={handleBackdropKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="Close modal"
+      />
+
+      {/* Modal - non-interactive container */}
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none`}
+      >
+        <div
+          className="glass rounded-2xl p-8 max-w-md w-full pointer-events-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose mode"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Choose mode</h2>
+            <button
+              onClick={onClose}
+              className="p-2 text-grey hover:text-white transition-colors"
+            >
+              <FaTimes className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {modes.map((mode) => {
+              const Icon = mode.icon;
+              const isSelected = selectedMode === mode.id;
+
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => handleModeSelect(mode.id)}
+                  disabled={!mode.available}
+                  className={`
+                    p-4 rounded-xl border-2 transition-all text-left w-full
+                    ${mode.available
+                      ? isSelected
+                        ? 'border-sky bg-sky/10'
+                        : 'border-white/10 hover:border-sky/50 bg-white/5'
+                      : 'border-white/5 bg-white/5 opacity-50 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      mode.available ? 'bg-sky/10' : 'bg-white/5'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${mode.available ? 'text-sky' : 'text-grey'}`} />
+                    </div>
+                    <span className="font-bold text-white text-sm">{mode.name}</span>
                   </div>
-                  <span className="font-bold text-white text-sm">{mode.name}</span>
-                </div>
-                <div className="text-grey text-xs">{mode.description}</div>
-                {!mode.available && (
-                  <div className="mt-2 text-[10px] text-grey/50">Coming soon</div>
-                )}
-              </button>
-            );
-          })}
+                  <div className="text-grey text-xs">{mode.description}</div>
+                  {!mode.available && (
+                    <div className="mt-2 text-[10px] text-grey/50">Coming soon</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

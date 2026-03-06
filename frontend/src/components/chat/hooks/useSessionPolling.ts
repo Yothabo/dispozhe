@@ -1,10 +1,16 @@
 import { useEffect, useRef } from 'react';
 
+interface SessionStatus {
+  participant_count: number;
+  status: string;
+  [key: string]: unknown;
+}
+
 interface UseSessionPollingProps {
   sessionId: string;
   terminationCompleted: boolean;
   showSecondUserTermination: boolean;
-  onStatusUpdate: (data: any) => void;
+  onStatusUpdate: (data: SessionStatus) => void;
   onSessionEnded: () => void;
   connectionId: React.MutableRefObject<string>;
 }
@@ -25,20 +31,15 @@ export const useSessionPolling = ({
     const pollStatus = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/session/${sessionId}/status`);
-        const data = await response.json();
+        const data: SessionStatus = await response.json();
 
         onStatusUpdate(data);
 
-        if (data.status === 'active' && data.participant_count === 2) {
-          console.log(`[${connectionId.current}] Second user joined`);
-        }
-
         if (data.status === 'expired' || data.status === 'terminated') {
-          console.log(`[${connectionId.current}] Session ended`);
           onSessionEnded();
         }
-      } catch (err) {
-        console.error(`[${connectionId.current}] Status poll failed:`, err);
+      } catch {
+        // Silently fail - polling will continue
       }
     };
 

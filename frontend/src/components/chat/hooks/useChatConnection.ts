@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import wsService from '../../../services/websocket';
 
-export const useChatConnection = (sessionId: string, onMessage: (data: any) => void) => {
+type WebSocketMessage = {
+  type: string;
+  [key: string]: unknown;
+};
+
+export const useChatConnection = (sessionId: string, onMessage: (data: WebSocketMessage) => void) => {
   const [isConnected, setIsConnected] = useState(false);
   const connectAttempted = useRef<boolean>(false);
   const handlerRegistered = useRef<boolean>(false);
   const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
 
   useEffect(() => {
-    
     if (!sessionId || connectAttempted.current) {
       return;
     }
@@ -32,7 +36,7 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
       .then(() => {
         setIsConnected(true);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error(`[${connectionId.current}] Connection failed:`, err);
         setIsConnected(false);
       });
@@ -54,7 +58,7 @@ export const useChatConnection = (sessionId: string, onMessage: (data: any) => v
         setIsConnected(connected);
       }
     }, 2000);
-    
+
     return () => clearInterval(interval);
   }, [isConnected]);
 

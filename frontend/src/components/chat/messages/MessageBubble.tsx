@@ -34,13 +34,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const handleFileKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onViewFile(message);
+    }
+  };
+
   return (
     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} message-bubble`}>
       <div className={`max-w-[70%] ${isMe ? 'order-2' : 'order-1'}`}>
         {message.file ? (
-          // File message
           <div
             onClick={() => onViewFile(message)}
+            onKeyDown={handleFileKeyDown}
+            role="button"
+            tabIndex={0}
             className={`
               p-3 cursor-pointer transition-all hover:opacity-90
               ${isMe
@@ -70,7 +79,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
             )}
           </div>
         ) : (
-          // Text message
           <div
             className={`
               px-4 py-2 break-words
@@ -84,7 +92,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
           </div>
         )}
 
-        {/* Timestamp and status */}
         <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? 'justify-end' : 'justify-start'}`}>
           <span className="text-grey/50">{formatTime(message.timestamp)}</span>
           {isMe && (
@@ -98,7 +105,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MessageBubble
+export default MessageBubble;

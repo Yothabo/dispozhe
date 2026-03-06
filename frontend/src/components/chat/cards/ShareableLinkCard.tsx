@@ -5,16 +5,14 @@ interface ShareableLinkCardProps {
   link: string
   code?: string
   onCopy: () => void
-  onCopyCode?: () => void
+  _onCopyCode?: () => void // kept for API compatibility
   onOpenQR: () => void
   onOpenCode: () => void
 }
 
 const ShareableLinkCard: React.FC<ShareableLinkCardProps> = ({
   link,
-  code,
   onCopy,
-  onCopyCode,
   onOpenQR,
   onOpenCode
 }) => {
@@ -26,20 +24,20 @@ const ShareableLinkCard: React.FC<ShareableLinkCardProps> = ({
       setCopied(true);
       onCopy();
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+    } catch {
+      // Ignore copy errors
     }
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
+    if (navigator.share && typeof navigator.share === 'function') {
       try {
         await navigator.share({
           title: 'Driflly - Private Chat Invitation',
           text: 'Join me for a private, encrypted conversation that vanishes.',
           url: link,
         });
-      } catch (err) {
+      } catch {
         handleCopy();
       }
     } else {
@@ -59,7 +57,6 @@ const ShareableLinkCard: React.FC<ShareableLinkCardProps> = ({
           {link}
         </div>
 
-        {/* Buttons */}
         <div className="grid grid-cols-4 gap-2">
           <button
             onClick={handleCopy}
@@ -69,7 +66,7 @@ const ShareableLinkCard: React.FC<ShareableLinkCardProps> = ({
             <span className="text-[10px] font-medium tracking-wide text-grey-light group-hover:text-white transition-colors">{copied ? 'Copied' : 'Copy'}</span>
           </button>
 
-          {navigator.share && (
+          {navigator.share && typeof navigator.share === 'function' && (
             <button
               onClick={handleShare}
               className="flex flex-col items-center justify-center gap-1.5 bg-white/5 text-white px-2 py-3 rounded-lg hover:bg-white/10 transition-colors group"
@@ -97,7 +94,6 @@ const ShareableLinkCard: React.FC<ShareableLinkCardProps> = ({
         </div>
       </div>
 
-      {/* Note - below card */}
       <div className="mt-4">
         <p className="text-grey/50 text-xs font-light leading-relaxed">
           <span className="text-sky font-bold">Note:</span> All methods are one-time use.

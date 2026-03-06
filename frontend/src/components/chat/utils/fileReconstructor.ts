@@ -1,5 +1,15 @@
 import { FileMessage } from '../types';
 
+interface FileChunkData {
+  fileId: string;
+  chunkIndex: number;
+  totalChunks: number;
+  chunk: string;
+  fileName: string;
+  fileType: string;
+  timestamp: number;
+}
+
 interface FileChunk {
   fileId: string;
   chunks: string[];
@@ -12,7 +22,7 @@ interface FileChunk {
 export class FileReconstructor {
   private chunks: Map<string, FileChunk> = new Map();
 
-  addChunk(data: any): FileMessage | null {
+  addChunk(data: FileChunkData): FileMessage | null {
     if (!this.chunks.has(data.fileId)) {
       this.chunks.set(data.fileId, {
         fileId: data.fileId,

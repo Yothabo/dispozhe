@@ -24,16 +24,13 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
-    
-    // Notify management (anonymized)
+
     notifyManagement(
       'Application error occurred. Our team has been notified.',
       'error'
     );
-    
-    // In production, you could send this to an error tracking service
+
     if (import.meta.env.PROD) {
-      // Send anonymized error report
       fetch('/api/log-error', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -58,7 +55,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Something went wrong</h2>
             <p className="text-grey mb-6">
-              We've been notified and are working on a fix. Please try again later.
+              We&apos;ve been notified and are working on a fix. Please try again later.
             </p>
             <button
               onClick={() => window.location.reload()}

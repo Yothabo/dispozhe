@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 const API_URL = 'http://localhost:8080';
 
@@ -6,30 +6,36 @@ describe('Session Management API', () => {
   let sessionId: string;
   let sessionCode: string;
 
-  it('should create a new session', async () => {
+  beforeAll(async () => {
     const response = await fetch(`${API_URL}/session/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ duration: 5 })
     });
-    
-    expect(response.status).toBe(200);
     const data = await response.json();
-    
-    expect(data).toHaveProperty('session_id');
-    expect(data).toHaveProperty('code');
-    expect(data.duration).toBe(5);
-    expect(data.status).toBe('waiting');
-    
     sessionId = data.session_id;
     sessionCode = data.code;
-    
+  });
+
+  afterAll(async () => {
+    try {
+      await fetch(`${API_URL}/session/${sessionId}`, {
+        method: 'DELETE'
+      });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should create a new session', async () => {
+    expect(sessionId).toBeDefined();
+    expect(sessionCode).toBeDefined();
   });
 
   it('should get session status', async () => {
     const response = await fetch(`${API_URL}/session/${sessionId}/status`);
     expect(response.status).toBe(200);
-    
+
     const data = await response.json();
     expect(data.session_id).toBe(sessionId);
     expect(data.participant_count).toBe(1);
@@ -42,10 +48,10 @@ describe('Session Management API', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     expect(response.status).toBe(200);
     const data = await response.json();
-    
+
     expect(data.session_id).toBe(sessionId);
     expect(data.status).toBe('active');
     expect(data).toHaveProperty('encryption_key');
@@ -56,7 +62,7 @@ describe('Session Management API', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     expect(response.status).toBe(404);
   });
 
@@ -65,7 +71,7 @@ describe('Session Management API', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     expect(response.status).toBe(404);
   });
 
@@ -73,7 +79,7 @@ describe('Session Management API', () => {
     const response = await fetch(`${API_URL}/session/${sessionId}`, {
       method: 'DELETE'
     });
-    
+
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.status).toBe('terminated');

@@ -1,26 +1,4 @@
 import React, { useState } from 'react';
-import {
-  FaBolt,
-  FaPlay,
-  FaShieldAlt,
-  FaHourglassHalf,
-  FaUserSecret,
-  FaPlus,
-  FaShare,
-  FaLock,
-  FaTrash,
-  FaBan,
-  FaCheckCircle,
-  FaGlobe,
-  FaCommentDots,
-  FaKey,
-  FaClock,
-  FaUserFriends,
-  FaDatabase,
-  FaQrcode,
-  FaDollarSign
-} from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
 
 // Sections
 import CareersContent from '../components/modals/CareersContent';
@@ -33,16 +11,14 @@ import PrivacyPolicyContent from '../components/modals/PrivacyPolicyContent';
 import SecurityContent from '../components/modals/SecurityContent';
 import TermsOfServiceContent from '../components/modals/TermsOfServiceContent';
 import ModesContent from '../components/modals/ModesContent';
-import FeaturesSection from '../components/sections/FeaturesSection';
 import HeroSection from '../components/sections/HeroSection';
+import ModesSection from '../components/sections/ModesSection';
+import FeaturesSection from '../components/sections/FeaturesSection';
 import HowItWorksSection from '../components/sections/HowItWorksSection';
 import WhySection from '../components/sections/WhySection';
 import SecuritySection from '../components/sections/SecuritySection';
-import ImageSection from '../components/sections/ImageSection';
 // import CTASection from '../components/sections/CTASection'; // Disabled
 import Footer from '../components/sections/Footer';
-
-// Modals
 
 interface LandingPageProps {
   onStartChat: () => void;
@@ -54,11 +30,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartChat }) => {
   return (
     <div className="min-h-screen w-full">
       <HeroSection onStartChat={onStartChat} />
+      <ModesSection />
       <FeaturesSection />
       <HowItWorksSection />
       <WhySection />
       <SecuritySection />
-      <ImageSection />
       {/* CTA Section disabled */}
       <Footer onModalOpen={setActiveModal} />
 

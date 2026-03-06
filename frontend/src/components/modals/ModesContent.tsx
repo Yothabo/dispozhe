@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaCheck, FaUserFriends, FaUsers, FaChalkboardTeacher, FaBroadcastTower, FaFileDownload, FaCommentSlash } from 'react-icons/fa';
+import { FaUserFriends, FaUsers, FaChalkboardTeacher, FaBroadcastTower, FaFileDownload, FaCommentSlash } from 'react-icons/fa';
 
 const ModesContent: React.FC = () => {
   return (
@@ -10,9 +10,7 @@ const ModesContent: React.FC = () => {
         </p>
       </div>
 
-      {/* Modes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Duo */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaUserFriends className="text-sky text-xl" />
@@ -27,7 +25,6 @@ const ModesContent: React.FC = () => {
           </ul>
         </div>
 
-        {/* Group */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaUsers className="text-sky text-xl" />
@@ -42,7 +39,6 @@ const ModesContent: React.FC = () => {
           </ul>
         </div>
 
-        {/* Live Board */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaChalkboardTeacher className="text-sky text-xl" />
@@ -57,7 +53,6 @@ const ModesContent: React.FC = () => {
           </ul>
         </div>
 
-        {/* Broadcast */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaBroadcastTower className="text-sky text-xl" />
@@ -71,7 +66,6 @@ const ModesContent: React.FC = () => {
           </ul>
         </div>
 
-        {/* Drop */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaFileDownload className="text-sky text-xl" />
@@ -85,7 +79,6 @@ const ModesContent: React.FC = () => {
           </ul>
         </div>
 
-        {/* Whisper */}
         <div className="glass rounded-xl p-5 border border-sky/10">
           <div className="flex items-center gap-3 mb-3">
             <FaCommentSlash className="text-sky text-xl" />

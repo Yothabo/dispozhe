@@ -14,7 +14,7 @@ const NotFoundPage: React.FC = () => {
             <span className="text-sky text-4xl">404</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Page Not Found</h1>
-          <p className="text-grey mb-6">The page you're looking for doesn't exist or has been moved.</p>
+          <p className="text-grey mb-6">The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
           <div className="space-y-3">
             <button
               onClick={() => navigate('/')}

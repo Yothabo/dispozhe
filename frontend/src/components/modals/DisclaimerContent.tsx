@@ -27,7 +27,7 @@ const DisclaimerContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">4. No warranty</h4>
         <p className="text-sm leading-relaxed">
-          The service is provided on an "as is" and "as available" basis without warranties of any kind.
+          The service is provided on an &quot;as is&quot; and &quot;as available&quot; basis without warranties of any kind.
         </p>
       </div>
       <div className="space-y-4">

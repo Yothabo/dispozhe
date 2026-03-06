@@ -13,22 +13,17 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-
-    // Mark as viewed when opened
     if (!file.viewed) {
       onViewed(file.id);
     }
 
-    // Create object URL for images
     if (file.type.startsWith('image/') && file.data) {
       const base64Url = `data:${file.type};base64,${file.data}`;
       setImageUrl(base64Url);
     }
   }, [file, onViewed]);
 
-  const handleDownload = () => {
-    // Grayed out - disabled for security
-  };
+  const handleDownload = () => {};
 
   const truncateFileName = (name: string, maxLength: number = 30) => {
     if (name.length <= maxLength) return name;
@@ -36,6 +31,12 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
     const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
     const truncatedName = nameWithoutExt.substring(0, maxLength - 3 - extension.length);
     return `${truncatedName}...${extension}`;
+  };
+
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
   };
 
   const renderContent = () => {
@@ -75,42 +76,60 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onViewed }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/90 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative max-w-4xl w-full bg-navy-light rounded-2xl border border-white/10 overflow-hidden" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-white font-bold truncate max-w-md" title={file.name}>
-              {truncateFileName(file.name)}
-            </h3>
-            {file.viewOnce && file.viewed && (
-              <span className="text-xs bg-sky/10 text-sky px-2 py-1 rounded-full flex-shrink-0">Viewed once</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={handleDownload}
-              className="p-2 text-grey/50 cursor-not-allowed"
-              title="Download disabled for security"
-              disabled
-            >
-              <FaDownload className="w-5 h-5" />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-grey hover:text-white transition-colors"
-            >
-              <FaTimes className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+    <>
+      {/* Backdrop - interactive element with role="button" */}
+      <div
+        className="fixed inset-0 z-40 bg-navy/90 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={handleBackdropKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="Close file viewer"
+      />
 
-        {/* Content */}
-        <div className="p-4 bg-navy/50">
-          {renderContent()}
+      {/* Viewer - non-interactive container */}
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none`}
+      >
+        <div
+          className="relative max-w-4xl w-full bg-navy-light rounded-2xl border border-white/10 overflow-hidden pointer-events-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="File viewer"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-white font-bold truncate max-w-md" title={file.name}>
+                {truncateFileName(file.name)}
+              </h3>
+              {file.viewOnce && file.viewed && (
+                <span className="text-xs bg-sky/10 text-sky px-2 py-1 rounded-full flex-shrink-0">Viewed once</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleDownload}
+                className="p-2 text-grey/50 cursor-not-allowed"
+                title="Download disabled for security"
+                disabled
+              >
+                <FaDownload className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 text-grey hover:text-white transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 bg-navy/50">
+            {renderContent()}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

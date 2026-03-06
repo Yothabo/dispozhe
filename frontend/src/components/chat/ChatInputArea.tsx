@@ -5,7 +5,7 @@ interface ChatInputAreaProps {
   inputText: string;
   isConnected: boolean;
   isSendingFile: boolean;
-  isTerminating: boolean;
+  _isTerminating?: boolean; // kept for API compatibility
   otherUserLeft: boolean;
   timeUp: boolean;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -21,7 +21,6 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
   inputText,
   isConnected,
   isSendingFile,
-  isTerminating,
   otherUserLeft,
   timeUp,
   onInputChange,
@@ -68,7 +67,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: 0,
+        bottom: keyboardHeight,
         height: inputHeight,
         zIndex: 40,
         backgroundColor: '#0A192F',

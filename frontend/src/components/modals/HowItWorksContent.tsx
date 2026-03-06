@@ -9,7 +9,7 @@ const HowItWorksContent: React.FC = () => {
       <div className="space-y-4">
         <h4 className="text-white font-semibold">1. Session creation</h4>
         <p className="text-sm leading-relaxed">
-          A user initiates a chat by selecting a duration. An encryption key is generated locally on the user's device. The key is never transmitted to servers.
+          A user initiates a chat by selecting a duration. An encryption key is generated locally on the user&apos;s device. The key is never transmitted to servers.
         </p>
       </div>
       <div className="space-y-4">

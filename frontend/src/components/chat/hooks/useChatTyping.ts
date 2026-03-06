@@ -11,18 +11,18 @@ export const useChatTyping = () => {
   }, []);
 
   const handleTyping = useCallback((
-    e: React.ChangeEvent<HTMLInputElement>, 
-    isTerminating: boolean, 
-    otherUserLeft: boolean, 
-    showSecondUserTermination: boolean, 
+    e: React.ChangeEvent<HTMLInputElement>,
+    isTerminating: boolean,
+    otherUserLeft: boolean,
+    showSecondUserTermination: boolean,
     timeUp: boolean,
     setInputText: (value: string) => void
   ) => {
     if (isTerminating || otherUserLeft || showSecondUserTermination || timeUp) return;
-    
+
     const value = e.target.value;
     setInputText(value);
-    
+
     const now = Date.now();
     if (value.length > 0) {
       if (now - lastTypingSent.current > 2000) {
@@ -34,7 +34,7 @@ export const useChatTyping = () => {
     }
   }, []);
 
-  const handleTypingIndicator = useCallback((data: any) => {
+  const handleTypingIndicator = useCallback((data: { isTyping: boolean }) => {
     setOtherUserTyping(data.isTyping);
     if (data.isTyping) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);

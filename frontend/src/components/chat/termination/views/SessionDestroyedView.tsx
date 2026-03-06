@@ -1,17 +1,21 @@
 import React from 'react';
-import { FaCheck, FaPlus } from 'react-icons/fa';
+import { FaCheck, FaPlus, FaHome } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 interface SessionDestroyedViewProps {
-  onNewChat: () => void;
-  onClose: () => void;
+  _onNewChat?: () => void; // kept for API compatibility
+  _onClose?: () => void;
 }
 
-const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = ({ onNewChat, onClose }) => {
+const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = () => {
   const navigate = useNavigate();
 
   const handleNewChat = () => {
     navigate('/create');
+  };
+
+  const handleHome = () => {
+    navigate('/');
   };
 
   return (
@@ -20,12 +24,12 @@ const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = ({ onNewChat, 
         <div className="w-20 h-20 rounded-full bg-sky/10 flex items-center justify-center mx-auto mb-6 border border-sky/20">
           <FaCheck className="w-8 h-8 text-sky" />
         </div>
-        
+
         <h2 className="text-2xl font-bold text-white mb-3 text-center">Session Destroyed</h2>
         <p className="text-grey mb-8 text-center">
           The chat session has been permanently deleted. All data has been wiped from our servers.
         </p>
-        
+
         <div className="flex gap-3">
           <button
             onClick={handleNewChat}
@@ -35,10 +39,11 @@ const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = ({ onNewChat, 
             New Chat
           </button>
           <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-colors border border-white/10"
+            onClick={handleHome}
+            className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-colors border border-white/10 flex items-center justify-center gap-2"
           >
-            Close
+            <FaHome className="w-4 h-4" />
+            Home
           </button>
         </div>
       </div>

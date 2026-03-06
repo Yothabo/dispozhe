@@ -5,14 +5,14 @@ interface InputAreaProps {
   isConnected: boolean;
   isSendingFile: boolean;
   isUploading: boolean;
-  isTerminating: boolean;
-  otherUserLeft: boolean;
-  timeUp: boolean;
+  _isTerminating?: boolean;
+  _otherUserLeft?: boolean;
+  _timeUp?: boolean;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSend: () => void;
   onAttachmentClick: () => void;
   inputRef: React.RefObject<HTMLInputElement>;
-  keyboardHeight: number;
+  _keyboardHeight: number;
   style: React.CSSProperties;
 }
 
@@ -21,14 +21,10 @@ const InputArea: React.FC<InputAreaProps> = ({
   isConnected,
   isSendingFile,
   isUploading,
-  isTerminating,
-  otherUserLeft,
-  timeUp,
   onInputChange,
   onSend,
   onAttachmentClick,
   inputRef,
-  keyboardHeight,
   style
 }) => {
   return (

@@ -1,6 +1,6 @@
 export type WebSocketMessage = {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type MessageHandler = (data: WebSocketMessage) => void;
@@ -17,7 +17,7 @@ class WebSocketService {
   private isTerminated = false;
   private connectionInProgress = false;
   private terminating = false;
-  private messageQueue: any[] = [];
+  private messageQueue: WebSocketMessage[] = [];
   private connectionId: string | null = null;
 
   private getWebSocketUrl(sessionId: string): string {
@@ -73,7 +73,7 @@ class WebSocketService {
           if (this.connectionId !== newConnectionId) return;
 
           try {
-            const data = JSON.parse(event.data);
+            const data = JSON.parse(event.data) as WebSocketMessage;
 
             if (data.type === 'ping') {
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
@@ -84,7 +84,7 @@ class WebSocketService {
               return;
             }
 
-            if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
+            if (data.type === 'destroying_session' || data.type === 'participant_leaving' || data.type === 'participant_left') {
               this.isTerminated = true;
               this.shouldReconnect = false;
               this.terminating = true;
@@ -93,20 +93,20 @@ class WebSocketService {
             this.messageHandlers.forEach(handler => {
               try {
                 handler(data);
-              } catch (e) {
-                console.error('[WebSocket] Handler error:', e);
+              } catch {
+                // Ignore handler errors
               }
             });
-          } catch (e) {
-            console.error('[WebSocket] Failed to parse message:', e);
+          } catch {
+            // Ignore parse errors
           }
         };
 
-        this.ws.onerror = (error) => {
+        this.ws.onerror = () => {
           if (this.connectionId !== newConnectionId) return;
 
           this.connectionInProgress = false;
-          reject(error);
+          reject(new Error('WebSocket connection error'));
         };
 
         this.ws.onclose = (event) => {
@@ -119,7 +119,7 @@ class WebSocketService {
             return;
           }
 
-          if (event.code === 1000) {
+          if (event && event.code === 1000) {
             return;
           }
 
@@ -198,7 +198,7 @@ class WebSocketService {
     this.connectionId = null;
   }
 
-  sendMessage(message: any): boolean {
+  sendMessage(message: WebSocketMessage): boolean {
     if (this.terminating || this.isTerminated) {
       return false;
     }
@@ -207,7 +207,7 @@ class WebSocketService {
       try {
         this.ws.send(JSON.stringify(message));
         return true;
-      } catch (err) {
+      } catch {
         this.messageQueue.push(message);
         return false;
       }

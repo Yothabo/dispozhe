@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import imageCompression from 'browser-image-compression';
 import { Message, FileMessage } from '../types';
 import wsService from '../../../services/websocket';
@@ -21,7 +21,6 @@ export const useFileHandling = (
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input to allow selecting same file again
     e.target.value = '';
 
     if (file.size > MAX_FILE_SIZE) {
@@ -32,7 +31,6 @@ export const useFileHandling = (
     setIsSendingFile(true);
     setSendingFile(true);
 
-    // Close the attachment picker immediately
     if (onClosePicker) {
       onClosePicker();
     }
@@ -40,7 +38,6 @@ export const useFileHandling = (
     try {
       let fileToSend = file;
 
-      // Compress images if they're large
       if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
         const options = {
           maxSizeMB: 1,
@@ -50,15 +47,13 @@ export const useFileHandling = (
 
         try {
           fileToSend = await imageCompression(file, options);
-        } catch (compressionError) {
-          console.error('Compression failed, sending original:', compressionError);
+        } catch {
           fileToSend = file;
         }
       }
 
-      // Convert to base64
       const reader = new FileReader();
-      
+
       const base64Data = await new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const base64 = reader.result as string;
@@ -72,7 +67,6 @@ export const useFileHandling = (
       const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
       const timestamp = Date.now();
 
-      // Add sending message
       addMessage({
         id,
         text: `Sending ${fileToSend.name}...`,
@@ -81,12 +75,10 @@ export const useFileHandling = (
         status: 'sending'
       });
 
-      // Check WebSocket connection before sending
       if (!wsService.isConnected()) {
         throw new Error('WebSocket not connected');
       }
 
-      // Send file via WebSocket
       const message = {
         type: 'file',
         id,
@@ -106,7 +98,6 @@ export const useFileHandling = (
         throw new Error('Failed to send message - WebSocket send failed');
       }
 
-      // Update message status after successful send
       if (mountedRef.current) {
         setTimeout(() => {
           setMessages(prev => prev.map(msg =>
@@ -131,24 +122,18 @@ export const useFileHandling = (
   }, [addMessage, setMessages, mountedRef, setIsSendingFile, onClosePicker]);
 
   const handleViewFile = useCallback((message: Message) => {
-    
     if (!message.file) {
       return;
     }
-    
-    // Check if file has already been viewed
+
     if (viewedFiles.current.has(message.id)) {
       notifyManagement('This file can only be viewed once', 'info');
       return;
     }
-    
-    // Always open the preview modal first
+
     setPreviewFile(message.file);
-    
-    // Then mark as viewed if it's from them and viewOnce
+
     if (message.sender === 'them' && message.file.viewOnce && !message.file.viewed) {
-      
-      // Update local state
       setMessages(prev => prev.map(msg => {
         if (msg.id === message.id && msg.file) {
           return {
@@ -159,40 +144,35 @@ export const useFileHandling = (
         }
         return msg;
       }));
-      
-      // Notify sender
-      wsService.sendMessage({ 
-        type: 'file_viewed', 
-        messageId: message.id, 
-        timestamp: Date.now() 
+
+      wsService.sendMessage({
+        type: 'file_viewed',
+        messageId: message.id,
+        timestamp: Date.now()
       });
-      
-      // Add to viewed set
+
       viewedFiles.current.add(message.id);
     }
   }, [setMessages, viewedFiles]);
 
   const handleFileViewed = useCallback((fileId: string) => {
-    
-    // Add to viewed set
     viewedFiles.current.add(fileId);
-    
-    // Update message in UI
+
     setMessages(prev => prev.map(msg => {
       if (msg.file?.id === fileId && msg.sender === 'them') {
-        return { 
-          ...msg, 
+        return {
+          ...msg,
           file: { ...msg.file, viewed: true },
           text: `[File] ${msg.file.name} (viewed)`
         };
       }
       return msg;
     }));
-    
-    wsService.sendMessage({ 
-      type: 'file_viewed', 
-      messageId: fileId, 
-      timestamp: Date.now() 
+
+    wsService.sendMessage({
+      type: 'file_viewed',
+      messageId: fileId,
+      timestamp: Date.now()
     });
   }, [setMessages, viewedFiles]);
 

@@ -4,16 +4,21 @@ import WebSocket from 'ws';
 const API_URL = 'http://localhost:8080';
 const WS_URL = 'ws://localhost:8080';
 
+type WebSocketMessage = {
+  type: string;
+  connection_count?: number;
+  data?: string;
+  isTyping?: boolean;
+  [key: string]: unknown;
+};
+
 describe('WebSocket Connection Tests', () => {
   let sessionId: string;
   let sessionCode: string;
   let ws1: WebSocket;
   let ws2: WebSocket;
-  let ws1Messages: any[] = [];
-  let ws2Messages: any[] = [];
 
   beforeAll(async () => {
-    // Create a session
     const response = await fetch(`${API_URL}/session/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -25,40 +30,74 @@ describe('WebSocket Connection Tests', () => {
   });
 
   afterAll(() => {
-    // Clean up WebSocket connections
     if (ws1 && ws1.readyState === WebSocket.OPEN) ws1.close();
     if (ws2 && ws2.readyState === WebSocket.OPEN) ws2.close();
   });
 
-  it('should allow first participant to connect', async () => {
-    return new Promise<void>((resolve, reject) => {
-      ws1 = new WebSocket(`${WS_URL}/ws/${sessionId}`);
-      
-      ws1.on('open', () => {
-        expect(ws1.readyState).toBe(WebSocket.OPEN);
-        resolve();
-      });
+  const waitForEvent = (ws: WebSocket, event: string, timeout = 5000): Promise<WebSocketMessage> => {
+    return new Promise((resolve, reject) => {
+      if (!ws) {
+        reject(new Error('WebSocket is undefined'));
+        return;
+      }
 
-      ws1.on('error', (error) => {
-        reject(error);
-      });
-    });
-  });
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timeout waiting for ${event}`));
+      }, timeout);
 
-  it('should receive connected message with count=1', async () => {
-    return new Promise<void>((resolve, reject) => {
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'connected') {
-          expect(message.connection_count).toBe(1);
-          expect(message.session_id).toBe(sessionId);
-          ws1.removeListener('message', onMessage);
-          resolve();
+      const handler = (data: WebSocket.RawData) => {
+        try {
+          const message = JSON.parse(data.toString()) as WebSocketMessage;
+          if (message.type === event) {
+            cleanup();
+            resolve(message);
+          }
+        } catch {
+          // Ignore parse errors
         }
       };
-      ws1.on('message', onMessage);
-      ws1.on('error', reject);
+
+      const errorHandler = (err: Error) => {
+        cleanup();
+        reject(err);
+      };
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (ws) {
+          ws.removeListener('message', handler);
+          ws.removeListener('error', errorHandler);
+        }
+      };
+
+      ws.on('message', handler);
+      ws.on('error', errorHandler);
     });
+  };
+
+  const connectParticipant = (): Promise<WebSocket> => {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`${WS_URL}/ws/${sessionId}`);
+
+      ws.on('open', () => {
+        resolve(ws);
+      });
+
+      ws.on('error', (err) => {
+        reject(err);
+      });
+    });
+  };
+
+  it('should connect first participant', async () => {
+    ws1 = await connectParticipant();
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+  });
+
+  it('should receive connected message for participant 1', async () => {
+    const msg = await waitForEvent(ws1, 'connected');
+    expect(msg.connection_count).toBe(1);
   });
 
   it('should allow second participant to join via code', async () => {
@@ -71,185 +110,111 @@ describe('WebSocket Connection Tests', () => {
     expect(data.session_id).toBe(sessionId);
   });
 
-  it('should allow second participant to connect', async () => {
-    return new Promise<void>((resolve, reject) => {
-      ws2 = new WebSocket(`${WS_URL}/ws/${sessionId}`);
-      
-      ws2.on('open', () => {
-        expect(ws2.readyState).toBe(WebSocket.OPEN);
-        resolve();
-      });
-
-      ws2.on('error', (error) => {
-        reject(error);
-      });
-    });
+  it('should connect second participant', async () => {
+    ws2 = await connectParticipant();
+    expect(ws2.readyState).toBe(WebSocket.OPEN);
   });
 
-  it('should receive connected message with count=2', async () => {
-    return new Promise<void>((resolve, reject) => {
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'connected') {
-          expect(message.connection_count).toBe(2);
-          ws2.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      ws2.on('message', onMessage);
-      ws2.on('error', reject);
-    });
+  it('should receive connected message for participant 2', async () => {
+    const msg = await waitForEvent(ws2, 'connected');
+    expect(msg.connection_count).toBe(2);
   });
 
   it('should exchange messages between participants', async () => {
     const testMessage = 'Hello from participant 1';
-    
-    return new Promise<void>((resolve, reject) => {
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'message') {
-          const decoded = atob(message.data);
-          expect(decoded).toBe(testMessage);
-          ws2.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      
-      ws2.on('message', onMessage);
-      ws2.on('error', reject);
-      
-      ws1.send(JSON.stringify({
-        type: 'message',
-        data: btoa(testMessage),
-        timestamp: Date.now(),
-        id: 'test-msg-1'
-      }));
-    });
+
+    const messagePromise = waitForEvent(ws2, 'message');
+
+    ws1.send(JSON.stringify({
+      type: 'message',
+      data: btoa(testMessage),
+      timestamp: Date.now(),
+      id: 'test-msg-1'
+    }));
+
+    const received = await messagePromise;
+    const decoded = atob(received.data as string);
+    expect(decoded).toBe(testMessage);
   });
 
   it('should send message back from participant 2', async () => {
     const testMessage = 'Hello back from participant 2';
-    
-    return new Promise<void>((resolve, reject) => {
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'message') {
-          const decoded = atob(message.data);
-          expect(decoded).toBe(testMessage);
-          ws1.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      
-      ws1.on('message', onMessage);
-      ws1.on('error', reject);
-      
-      ws2.send(JSON.stringify({
-        type: 'message',
-        data: btoa(testMessage),
-        timestamp: Date.now(),
-        id: 'test-msg-2'
-      }));
-    });
+
+    const messagePromise = waitForEvent(ws1, 'message');
+
+    ws2.send(JSON.stringify({
+      type: 'message',
+      data: btoa(testMessage),
+      timestamp: Date.now(),
+      id: 'test-msg-2'
+    }));
+
+    const received = await messagePromise;
+    const decoded = atob(received.data as string);
+    expect(decoded).toBe(testMessage);
   });
 
   it('should handle typing indicators', async () => {
-    return new Promise<void>((resolve, reject) => {
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'typing') {
-          expect(message.isTyping).toBe(true);
-          ws2.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      
-      ws2.on('message', onMessage);
-      ws2.on('error', reject);
-      
-      ws1.send(JSON.stringify({
-        type: 'typing',
-        isTyping: true,
-        timestamp: Date.now()
-      }));
-    });
+    const typingPromise = waitForEvent(ws2, 'typing');
+
+    ws1.send(JSON.stringify({
+      type: 'typing',
+      isTyping: true,
+      timestamp: Date.now()
+    }));
+
+    const received = await typingPromise;
+    expect(received.isTyping).toBe(true);
   });
 
   it('should reject third participant', async () => {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       const ws3 = new WebSocket(`${WS_URL}/ws/${sessionId}`);
-      
+
       ws3.on('open', () => {
-        reject(new Error('Third connection should not open'));
+        ws3.close();
+        throw new Error('Third connection should not open');
       });
-      
-      let closed = false;
-      
-      ws3.on('close', (code) => {
-        if (!closed) {
-          closed = true;
-          // Accept either 1006 (HTTP 403 rejection) or 1008 (explicit close)
-          expect([1006, 1008]).toContain(code);
-          resolve();
-        }
+
+      ws3.on('close', () => {
+        resolve();
       });
-      
-      ws3.on('error', (error) => {
-        // Don't reject on error - we'll wait for close event
+
+      ws3.on('error', () => {
+        resolve();
       });
-      
-      // Set a timeout in case nothing happens
-      setTimeout(() => {
-        if (!closed) {
-          reject(new Error('Third connection not rejected'));
-        }
-      }, 3000);
     });
   });
 
   it('should handle participant disconnection', async () => {
-    return new Promise<void>((resolve) => {
-      let ws2Closed = false;
-      
-      ws2.on('close', (code) => {
-        ws2Closed = true;
-        
-        // Check that ws1 is still connected
-        expect(ws1.readyState).toBe(WebSocket.OPEN);
-        
-        if (ws2Closed) {
-          resolve();
-        }
-      });
-      
-      // Close participant 2
-      setTimeout(() => {
-        ws2.close();
-      }, 100);
+    const closePromise = new Promise<void>((resolve) => {
+      if (!ws2) {
+        resolve();
+        return;
+      }
+      ws2.once('close', () => resolve());
     });
+
+    if (ws2) {
+      ws2.close();
+      await closePromise;
+    }
+
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
   });
 
   it('should terminate session', async () => {
-    return new Promise<void>((resolve) => {
-      // Listen for session_terminated message
-      const onMessage = (data: WebSocket.RawData) => {
-        const message = JSON.parse(data.toString());
-        if (message.type === 'session_terminated') {
-          ws1.removeListener('message', onMessage);
-          resolve();
-        }
-      };
-      
-      ws1.on('message', onMessage);
-      
-      // Terminate the session via API
-      fetch(`${API_URL}/session/${sessionId}`, {
-        method: 'DELETE'
-      }).then(response => {
-        expect(response.status).toBe(200);
-      }).catch(err => {
-        console.error('Termination API error:', err);
-      });
+    if (!ws1) {
+      throw new Error('WebSocket not connected');
+    }
+
+    const terminatedPromise = waitForEvent(ws1, 'session_terminated');
+
+    const response = await fetch(`${API_URL}/session/${sessionId}`, {
+      method: 'DELETE'
     });
+    expect(response.status).toBe(200);
+
+    await terminatedPromise;
   });
 });

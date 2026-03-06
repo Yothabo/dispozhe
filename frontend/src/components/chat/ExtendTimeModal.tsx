@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaClock, FaTimes } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 
 interface ExtendTimeModalProps {
   show: boolean;
@@ -9,9 +9,9 @@ interface ExtendTimeModalProps {
   maxMinutes?: number;
 }
 
-const ExtendTimeModal: React.FC<ExtendTimeModalProps> = ({ 
-  show, 
-  onExtend, 
+const ExtendTimeModal: React.FC<ExtendTimeModalProps> = ({
+  show,
+  onExtend,
   onClose,
   canExtend = true,
   maxMinutes = 5

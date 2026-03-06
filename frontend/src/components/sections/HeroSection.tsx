@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { FaBolt, FaKey, FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
+import React from 'react';
+import { FaClock, FaTrash, FaShieldAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import ModeSelectorModal from '../modals/ModeSelectorModal';
 
 interface HeroSectionProps {
   onStartChat: () => void;
@@ -9,26 +8,15 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
   const navigate = useNavigate();
-  const [showModeSelector, setShowModeSelector] = useState(false);
-
-  const handleStartChat = () => {
-    setShowModeSelector(true);
-  };
-
-  const handleModeSelect = (mode: string) => {
-    if (mode === 'duo') {
-      onStartChat(); // This navigates to duration selector
-    }
-  };
 
   return (
     <section className="w-full min-h-screen flex items-center relative overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-full lg:w-1/2 h-full opacity-20 lg:opacity-100">
-          <img 
-            src="/images/hero.png" 
-            alt="" 
+          <img
+            src="/images/hero.png"
+            alt=""
             className="w-full h-full object-contain object-right"
             aria-hidden="true"
           />
@@ -67,8 +55,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button onClick={handleStartChat} className="btn-primary w-full sm:w-auto justify-center">
-                Start private chat
+              <button onClick={onStartChat} className="btn-primary w-full sm:w-auto justify-center">
+                Start private Duo chat
               </button>
               <button
                 onClick={() => navigate('/code')}
@@ -81,18 +69,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               Freemium • Ephemeral • Open source
             </p>
           </div>
-          
+
           {/* Empty div to maintain grid layout */}
           <div className="hidden lg:block"></div>
         </div>
       </div>
-
-      {/* Mode Selector Modal */}
-      <ModeSelectorModal
-        isOpen={showModeSelector}
-        onClose={() => setShowModeSelector(false)}
-        onSelectMode={handleModeSelect}
-      />
     </section>
   );
 };

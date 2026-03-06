@@ -1,146 +1,142 @@
-import React, { useState } from 'react'
-import { FaClock, FaTimes, FaSpinner } from 'react-icons/fa'
+import React, { useState } from 'react';
+import { FaArrowLeft, FaSpinner } from 'react-icons/fa';
 
 interface DurationSelectorProps {
-  onSelect: (minutes: number) => void
-  onClose: () => void
+  onSelect: (minutes: number) => void;
+  onClose: () => void;
+  isCreating?: boolean;
 }
 
-const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose }) => {
-  const [customMinutes, setCustomMinutes] = useState<string>('')
-  const [loadingMinutes, setLoadingMinutes] = useState<number | null>(null)
-  const [customLoading, setCustomLoading] = useState(false)
-  
-  const durations = [
-    { minutes: 5, display: '05' },
-    { minutes: 10, display: '10' },
-    { minutes: 30, display: '30' },
-    { minutes: 60, display: '60' },
-  ]
+const DurationSelector: React.FC<DurationSelectorProps> = ({ onSelect, onClose, isCreating = false }) => {
+  const [customMinutes, setCustomMinutes] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
 
-  const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '')
-    if (value === '' || parseInt(value) <= 60) {
-      setCustomMinutes(value)
-    }
-  }
+  const presets = [
+    { minutes: 5, display: '00:05:00', label: '5 minutes' },
+    { minutes: 15, display: '00:15:00', label: '15 minutes' },
+    { minutes: 30, display: '00:30:00', label: '30 minutes' },
+    { minutes: 60, display: '01:00:00', label: '1 hour' }
+  ];
 
-  const handleSelect = async (minutes: number) => {
-    setLoadingMinutes(minutes)
-    try {
-      await onSelect(minutes)
-    } finally {
-      setLoadingMinutes(null)
-    }
-  }
+  const handlePresetSelect = async (minutes: number) => {
+    setSelectedPreset(minutes);
+    onSelect(minutes);
+  };
 
   const handleCustomSelect = async () => {
-    const minutes = parseInt(customMinutes)
-    if (minutes && minutes > 0 && minutes <= 60) {
-      setCustomLoading(true)
-      try {
-        await onSelect(minutes)
-      } finally {
-        setCustomLoading(false)
-      }
+    const minutes = parseInt(customMinutes);
+    if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+      alert('Please enter a valid duration between 1 and 1440 minutes');
+      return;
     }
-  }
+
+    setSelectedPreset(minutes);
+    onSelect(minutes);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCustomSelect();
+    }
+  };
+
+  const renderTimeDisplay = (display: string) => {
+    return (
+      <div className="font-mono text-2xl font-bold mb-1">
+        {display}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-sm">
-      <div className="glass rounded-2xl p-6 max-w-md w-full relative">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10"
-          disabled={loadingMinutes !== null || customLoading}
-        >
-          <FaTimes className="w-4 h-4 text-grey" />
-        </button>
-
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky to-sky-dark flex items-center justify-center mx-auto mb-4">
-            <FaClock className="text-navy text-2xl" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Choose duration</h2>
-          <p className="text-grey text-sm font-light">
-            How long should your chat exist?
-          </p>
+      <div className="glass rounded-2xl p-8 max-w-md w-full">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onClose}
+            className="p-2 text-grey hover:text-white transition-colors"
+            aria-label="Go back"
+            disabled={isCreating}
+          >
+            <FaArrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-2xl font-bold text-white">Choose duration</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {durations.map((duration) => (
-            <button
-              key={duration.minutes}
-              onClick={() => handleSelect(duration.minutes)}
-              disabled={loadingMinutes !== null || customLoading}
-              className={`
-                group p-4 rounded-xl flex flex-col items-center justify-center transition-all
-                ${loadingMinutes === duration.minutes 
-                  ? 'bg-sky/20 border border-sky/40' 
-                  : 'bg-white/5 border border-white/10 hover:bg-sky/10 hover:border-sky/20'
-                }
-                ${(loadingMinutes !== null || customLoading) && loadingMinutes !== duration.minutes ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-              style={{ height: '96px' }}
-            >
-              {loadingMinutes === duration.minutes ? (
-                <>
-                  <FaSpinner className="w-8 h-8 text-sky animate-spin mb-2" />
-                  <span className="text-xs text-sky font-light">Creating...</span>
-                </>
-              ) : (
-                <>
-                  <div className="font-goldman text-3xl font-bold text-grey mb-1 tracking-wider">
-                    {duration.display}
-                  </div>
-                  <div className="text-xs text-grey/50 font-light">
-                    {duration.minutes} minutes
-                  </div>
-                </>
-              )}
-            </button>
-          ))}
+        {/* Instruction */}
+        <p className="text-grey text-sm mb-6 font-light">
+          Select how much time your chat should last
+        </p>
+
+        {/* Preset buttons */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {presets.map((preset) => {
+            const isActive = selectedPreset === preset.minutes && isCreating;
+
+            return (
+              <button
+                key={preset.minutes}
+                onClick={() => handlePresetSelect(preset.minutes)}
+                disabled={isCreating}
+                className={`
+                  p-6 rounded-xl border-2 transition-all text-center flex flex-col items-center justify-center
+                  ${isActive
+                    ? 'border-sky bg-sky/10'
+                    : 'border-white/10 hover:border-sky/50 bg-white/5'
+                  }
+                  ${isCreating ? 'cursor-wait opacity-80' : 'hover:bg-white/10'}
+                `}
+              >
+                {renderTimeDisplay(preset.display)}
+                <div className={`text-xs ${
+                  isActive ? 'text-grey' : 'text-grey/40'
+                }`}>
+                  {preset.label}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="relative mb-4">
+        {/* Custom input divider */}
+        <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-white/5"></div>
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-navy text-grey font-light">or custom</span>
+            <span className="px-3 bg-navy text-grey/30">or custom</span>
           </div>
         </div>
 
+        {/* Custom input */}
         <div className="flex gap-3">
-          <div className="flex-1">
-            <input
-              type="text"
-              value={customMinutes}
-              onChange={handleCustomChange}
-              placeholder="max 60"
-              disabled={loadingMinutes !== null || customLoading}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-center font-goldman text-xl font-bold focus:outline-none focus:border-sky/50 placeholder:text-grey/30 disabled:opacity-50"
-              style={{ height: '56px' }}
-            />
-          </div>
+          <input
+            type="number"
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter minutes"
+            min="1"
+            max="1440"
+            disabled={isCreating}
+            className="flex-1 px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/30 focus:outline-none focus:border-sky/50 disabled:opacity-50 text-lg"
+          />
           <button
             onClick={handleCustomSelect}
-            disabled={!customMinutes || parseInt(customMinutes) <= 0 || parseInt(customMinutes) > 60 || loadingMinutes !== null || customLoading}
-            className="px-6 py-3 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors disabled:opacity-50 flex items-center justify-center"
-            style={{ height: '56px' }}
+            disabled={!customMinutes || isCreating}
+            className="px-6 py-4 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors disabled:opacity-50 text-lg min-w-[100px] flex items-center justify-center"
           >
-            {customLoading ? <FaSpinner className="w-5 h-5 animate-spin" /> : 'Set'}
+            {isCreating ? (
+              <FaSpinner className="w-5 h-5 animate-spin" />
+            ) : (
+              'Go'
+            )}
           </button>
-        </div>
-
-        <div className="mt-4 text-center">
-          <p className="text-grey/50 text-xs font-light">
-            Chat self-destructs automatically after timer expires
-          </p>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DurationSelector
+export default DurationSelector;

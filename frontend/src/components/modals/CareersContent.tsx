@@ -72,7 +72,7 @@ const CareersContent: React.FC = () => {
 
       <div className="bg-white/5 rounded-lg p-4 text-center mt-6">
         <p className="text-xs text-grey/70">
-          Don't see a role that fits? Send your resume to <span className="text-sky">careers@driflly.com</span>
+          Don&apos;t see a role that fits? Send your resume to <span className="text-sky">careers@driflly.com</span>
         </p>
       </div>
     </div>

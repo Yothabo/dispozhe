@@ -244,23 +244,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             await websocket.close(code=1008, reason="Session expired")
             return
 
-        # Check connection count BEFORE accepting
         current_count = app.state.manager.get_connection_count(session_id)
         if current_count >= 2:
             logger.warning(f"Session {session_id} already has 2 connections - rejecting new connection")
             await websocket.close(code=1008, reason="Maximum connections reached")
             return
 
-        # Accept connection
         await websocket.accept()
         logger.info(f"WebSocket accepted for session {session_id}")
 
-        # Add to manager
         await app.state.manager.connect(websocket, session_id)
         connection_count = app.state.manager.get_connection_count(session_id)
         logger.info(f"WebSocket connected for session {session_id}, total connections: {connection_count}")
 
-        # Send connected message
         time_left = session.time_left() if hasattr(session, 'time_left') else 300
         await websocket.send_text(json.dumps({
             "type": "connected",
@@ -271,7 +267,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             "timestamp": datetime.utcnow().isoformat()
         }))
 
-        # Heartbeat to keep connection alive
         async def heartbeat():
             try:
                 while True:
@@ -280,8 +275,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         "type": "ping",
                         "timestamp": datetime.utcnow().isoformat()
                     }))
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Heartbeat stopped for session {session_id}")
 
         heartbeat_task = asyncio.create_task(heartbeat())
 
@@ -289,17 +284,51 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             while True:
                 message = await websocket.receive_text()
                 logger.debug(f"Received message from {session_id}: {message[:50]}")
-                await app.state.manager.broadcast_to_session(
-                    session_id,
-                    message,
-                    exclude=websocket
-                )
+                
+                try:
+                    message_data = json.loads(message)
+                    
+                    if message_data.get('type') == 'read_receipt':
+                        if hasattr(app.state.manager, 'mark_as_read'):
+                            await app.state.manager.mark_as_read(
+                                session_id,
+                                message_data['message_id'],
+                                websocket
+                            )
+                    elif message_data.get('type') == 'file_viewed':
+                        if hasattr(app.state.manager, 'handle_file_viewed'):
+                            await app.state.manager.handle_file_viewed(
+                                session_id,
+                                message_data['file_id'],
+                                websocket
+                            )
+                    else:
+                        status = await app.state.manager.send_message(
+                            session_id,
+                            message_data,
+                            websocket
+                        )
+                        
+                        if message_data.get('id'):
+                            await websocket.send_text(json.dumps({
+                                'type': 'delivery_status',
+                                'message_id': message_data.get('id'),
+                                'status': status['status'],
+                                'timestamp': datetime.utcnow().isoformat()
+                            }))
+                except json.JSONDecodeError:
+                    await app.state.manager.broadcast_to_session(
+                        session_id,
+                        message,
+                        exclude=websocket
+                    )
+                    
         except WebSocketDisconnect:
-            app.state.manager.disconnect(websocket, session_id)
+            await app.state.manager.disconnect(websocket, session_id)
             logger.info(f"WebSocket disconnected from session {session_id}")
         except Exception as e:
             logger.error(f"WebSocket error for session {session_id}: {e}")
-            app.state.manager.disconnect(websocket, session_id)
+            await app.state.manager.disconnect(websocket, session_id)
         finally:
             heartbeat_task.cancel()
 

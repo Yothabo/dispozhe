@@ -4,7 +4,6 @@ import WaitingScreen from '../components/chat/WaitingScreen';
 import api from '../services/api';
 import wsService from '../services/websocket';
 import Background from '../components/Background';
-import { useSessionValidation } from '../hooks/useSessionValidation';
 
 const WaitingPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -15,32 +14,23 @@ const WaitingPage: React.FC = () => {
   const polling = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasNavigated = useRef<boolean>(false);
 
-  // Validate session on mount
-  const { checking } = useSessionValidation({ 
-    sessionId: sessionId || '', 
-    redirectTo: '/' 
-  });
-
   useEffect(() => {
-    if (!sessionId || checking) return;
+    if (!sessionId) return;
 
     const key = window.location.hash.substring(1);
     const fullLink = `${window.location.origin}/c/${sessionId}#${key}`;
     setLink(fullLink);
 
-    // Get session details
     api.getSessionStatus(sessionId).then(status => {
       const mins = status.time_left_seconds ? Math.ceil(status.time_left_seconds / 60) : 30;
       setDuration(mins);
     }).catch(console.error);
 
-    // Get code from sessionStorage
     const sessionCode = sessionStorage.getItem(`Driflly_code_${sessionId}`);
     if (sessionCode) {
       setCode(sessionCode);
     }
 
-    // Poll for participant joining
     const poll = async () => {
       if (hasNavigated.current) return;
 
@@ -72,7 +62,7 @@ const WaitingPage: React.FC = () => {
         polling.current = null;
       }
     };
-  }, [sessionId, navigate, checking]);
+  }, [sessionId, navigate]);
 
   const handleTerminate = async () => {
     if (sessionId) {
@@ -85,19 +75,17 @@ const WaitingPage: React.FC = () => {
         console.error('Failed to terminate:', err);
       }
     }
-    navigate('/', { replace: true });
+    navigate('/');
   };
 
-  if (!link || checking) {
+  if (!link) {
     return (
       <div className="relative min-h-screen">
         <Background />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-sky border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-grey text-sm font-light">
-              {checking ? 'Validating session...' : 'Generating secure link...'}
-            </p>
+            <p className="text-grey text-sm font-light">Generating secure link...</p>
           </div>
         </div>
       </div>
@@ -111,8 +99,8 @@ const WaitingPage: React.FC = () => {
         <WaitingScreen
           link={link}
           code={code}
-          duration={duration}
-          sessionId={sessionId!}
+          _duration={duration}
+          _sessionId={sessionId!}
           onCopy={() => {}}
           onCopyCode={() => {}}
           onTerminate={handleTerminate}

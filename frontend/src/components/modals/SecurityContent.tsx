@@ -4,7 +4,7 @@ const SecurityContent: React.FC = () => {
   return (
     <div className="text-grey space-y-6">
       <p className="text-sm leading-relaxed">
-        Driflly's security architecture is designed to prevent data retention and unauthorized access.
+        Driflly&apos;s security architecture is designed to prevent data retention and unauthorized access.
       </p>
       <div className="space-y-4">
         <h4 className="text-white font-semibold">Encryption</h4>

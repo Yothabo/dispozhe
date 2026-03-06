@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import useKeyboard from '../../hooks/useKeyboard';
 import wsService from '../../services/websocket';
-import { preventRefresh, disableRefreshKeys } from '../../utils/preventRefresh';
+import { preventRefresh, disableRefreshKeys, setTerminatingState } from '../../utils/preventRefresh';
 import { notifyManagement } from '../NotificationCenter';
 import { useChatMessages, useChatTermination, useChatBackNavigation, useFileHandling, useChatTyping } from './hooks';
 import { useChatTimer } from './hooks/useChatTimer';
@@ -23,19 +23,16 @@ import TerminationModal from './termination/TerminationModal';
 import DestroyingSessionView from './termination/views/DestroyingSessionView';
 import SessionDestroyedView from './termination/views/SessionDestroyedView';
 
-import { Message } from './types';
-
 interface ActiveChatProps {
   sessionId: string;
   duration: number;
-  encryptionKey: string;
+  _encryptionKey?: string; // kept for API compatibility
   onTerminate: () => void;
 }
 
 const ActiveChat: React.FC<ActiveChatProps> = ({
   sessionId,
   duration,
-  encryptionKey,
   onTerminate
 }) => {
   const navigate = useNavigate();
@@ -43,9 +40,8 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isSendingFile, setIsSendingFile] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [mediaError, setMediaError] = useState<string | null>(null);
-  const [participantCount, setParticipantCount] = useState(1);
-  const [sessionActive, setSessionActive] = useState(false);
+  const [_isTerminatingProcess, setIsTerminatingProcess] = useState(false);
+  const [timeUpMessageSent, setTimeUpMessageSent] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -56,9 +52,9 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
 
   const keyboardHeight = useKeyboard();
 
-  const { checking: sessionChecking } = useSessionValidation({ 
-    sessionId, 
-    redirectTo: '/' 
+  const { checking: sessionChecking } = useSessionValidation({
+    sessionId,
+    redirectTo: '/'
   });
 
   const {
@@ -78,28 +74,29 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     handleTypingIndicator
   } = useChatTyping();
 
-  const timeUpMessageSent = useRef<boolean>(false);
+  const handleTimeUp = useCallback(() => {
+    if (timeUpMessageSent) return;
+    setTimeUpMessageSent(true);
+
+    addMessage({
+      id: `system-timeup-${Date.now()}`,
+      text: 'Session time has expired',
+      sender: 'system',
+      timestamp: Date.now()
+    });
+
+    // Optionally redirect or show expired UI
+  }, [addMessage, timeUpMessageSent]);
 
   const {
     timeLeft,
     formatTime,
     timeUp,
-    setTimeUp,
     stopTimer
   } = useChatTimer({
     initialDuration: duration,
     isConnected,
-    onTimeUp: () => {
-      if (timeUpMessageSent.current) return;
-      timeUpMessageSent.current = true;
-      
-      addMessage({
-        id: `system-timeup-${Date.now()}`,
-        text: 'Session time has expired',
-        sender: 'system',
-        timestamp: Date.now()
-      });
-    },
+    onTimeUp: handleTimeUp,
     sessionId
   });
 
@@ -115,7 +112,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     terminationSteps,
     handleInitiatorTerminate,
     handleSecondUserTerminate,
-    handleParticipantLeaving
   } = useChatTermination(sessionId, onTerminate, stopTimer);
 
   const {
@@ -169,10 +165,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     sessionId,
     terminationCompleted,
     showSecondUserTermination,
-    onStatusUpdate: (data) => {
-      setParticipantCount(data.participant_count);
-      setSessionActive(data.status === 'active');
-    },
+    onStatusUpdate: () => {},
     onSessionEnded: () => {},
     connectionId
   });
@@ -181,7 +174,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     isTerminating,
     terminationCompleted,
     showSecondUserTermination,
-    onMessage: handleMessage,
+    onMessage: handleMessage as (message: Record<string, unknown>) => void,
     connectionId
   });
 
@@ -220,10 +213,11 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
 
   useEffect(() => {
     mountedRef.current = true;
+    const currentTypingTimeout = typingTimeoutRef.current;
     return () => {
       mountedRef.current = false;
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+      if (currentTypingTimeout) {
+        clearTimeout(currentTypingTimeout);
       }
     };
   }, [typingTimeoutRef]);
@@ -284,7 +278,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   };
 
   const confirmTerminate = () => {
-    handleInitiatorTerminate();
+    setIsTerminatingProcess(true);
+    wsService.setTerminating();
+    setTerminatingState(true);
+    setTimeout(() => {
+      handleInitiatorTerminate();
+    }, 50);
   };
 
   const handleNewChat = () => {
@@ -303,8 +302,8 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   if (showSecondUserTermination) return <DestroyingSessionView steps={secondUserSteps} />;
   if (terminationCompleted) return (
     <SessionDestroyedView
-      onNewChat={handleNewChat}
-      onClose={handleClose}
+      _onNewChat={handleNewChat}
+      _onClose={handleClose}
     />
   );
 
@@ -415,12 +414,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         onChange={handleFileSelect}
         className="hidden"
       />
-
-      {mediaError && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500/90 text-white px-4 py-2 rounded-lg z-50">
-          {mediaError}
-        </div>
-      )}
 
       <TerminationModal
         show={showTerminateModal}

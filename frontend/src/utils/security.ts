@@ -33,7 +33,8 @@ export const disableCopyPaste = (element: HTMLElement | null, enabled: boolean =
 
 // Sanitize input to prevent XSS
 export const sanitizeInput = (input: string): string => {
-  return input
+  // First, escape HTML special characters to prevent tag injection
+  let sanitized = input
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -43,10 +44,20 @@ export const sanitizeInput = (input: string): string => {
     .replace(/\\/g, '&#x5C;')
     .replace(/`/g, '&#96;')
     .replace(/=/g, '&#61;');
+
+  // Remove any event handler patterns (like onerror, onclick) that could appear as attributes
+  // even after escaping. This is a simple regex that removes the word if it's followed by an equals sign.
+  // This prevents XSS while allowing the word to appear in normal text (e.g., "I made an error").
+  sanitized = sanitized.replace(/\b(on\w+)\s*&#61;/gi, '');
+
+  // Also remove javascript: links
+  sanitized = sanitized.replace(/javascript\s*:/gi, '');
+
+  return sanitized;
 };
 
 // Generate short-lived token (simulated - actual token comes from backend)
-export const isTokenValid = (token: string, timestamp: number): boolean => {
+export const isTokenValid = (_token: string, timestamp: number): boolean => {
   const now = Date.now();
   const tokenAge = now - timestamp;
   const maxAge = 60000; // 60 seconds

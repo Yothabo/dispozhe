@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DurationSelector from '../components/chat/DurationSelector';
 import api from '../services/api';
@@ -9,30 +9,31 @@ interface CreateSessionPageProps {
 
 const CreateSessionPage: React.FC<CreateSessionPageProps> = ({ onExit }) => {
   const navigate = useNavigate();
+  const [isCreating, setIsCreating] = useState(false);
 
-  const generateEncryptionKey = async (): Promise<string> => {
+  const generateEncryptionKey = (): string => {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     let binary = '';
     for (let i = 0; i < array.length; i++) {
       binary += String.fromCharCode(array[i]);
     }
-    const key = btoa(binary);
-    return key;
+    return btoa(binary);
   };
 
   const handleDurationSelect = async (minutes: number) => {
-    try {
-      const [key, response] = await Promise.all([
-        generateEncryptionKey(),
-        api.createSession(minutes)
-      ]);
+    if (isCreating) return;
 
-      console.log('CreateSessionPage: Session created successfully:', {
-        sessionId: response.session_id,
-        hasCode: !!response.code,
-        duration: response.duration
-      });
+    setIsCreating(true);
+
+    const key = generateEncryptionKey();
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await api.createSession(minutes);
+      clearTimeout(timeoutId);
 
       sessionStorage.setItem(`Driflly_initiator_${response.session_id}`, 'true');
 
@@ -40,17 +41,25 @@ const CreateSessionPage: React.FC<CreateSessionPageProps> = ({ onExit }) => {
         sessionStorage.setItem(`Driflly_code_${response.session_id}`, response.code);
       }
 
-      const navigatePath = `/waiting/${response.session_id}#${key}`;
-      navigate(navigatePath);
+      navigate(`/waiting/${response.session_id}#${key}`);
 
     } catch (err) {
-      console.error('CreateSessionPage: Failed to create session:', err);
-      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setIsCreating(false);
+      console.error('Failed to create session:', err);
+
+      if (err instanceof Error && err.name === 'AbortError') {
+        alert('Request timed out. Please try again.');
+      } else {
+        alert('Failed to create session. Please check your connection and try again.');
+      }
     }
   };
 
   return (
-    <DurationSelector onSelect={handleDurationSelect} onClose={onExit} />
+    <DurationSelector
+      onSelect={handleDurationSelect}
+      onClose={onExit}
+    />
   );
 };
 

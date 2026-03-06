@@ -15,12 +15,10 @@ class SoundManager {
   private fallbackEnabled: boolean = true;
 
   constructor() {
-    // Initialize sounds (they'll load on first play)
     this.loadSounds();
   }
 
   private loadSounds() {
-    // Try to load actual sound files
     Object.entries(SOUNDS).forEach(([key, url]) => {
       const sound = new Howl({
         src: [url],
@@ -34,19 +32,17 @@ class SoundManager {
     });
   }
 
-  // Fallback using Web Audio API for simple beeps
   private playFallbackBeep(type: string) {
     if (!this.fallbackEnabled || !this.enabled) return;
 
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
-      // Different tones for different events
       switch(type) {
         case 'message':
           oscillator.frequency.value = 880; // A5
@@ -78,8 +74,11 @@ class SoundManager {
           oscillator.start();
           oscillator.stop(audioContext.currentTime + 0.5);
           break;
+        default:
+          break;
       }
-    } catch (e) {
+    } catch {
+      // Ignore audio context errors
     }
   }
 
@@ -90,7 +89,6 @@ class SoundManager {
     if (sound && sound.state() === 'loaded') {
       sound.play();
     } else {
-      // Use fallback beep
       this.playFallbackBeep(type);
     }
   }
