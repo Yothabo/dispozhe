@@ -15,7 +15,7 @@ class ConnectionHandler:
     def __init__(self, connection_store: ConnectionStore, message_handler: MessageHandler):
         self.connections = connection_store
         self.messages = message_handler
-        self.reconnect_window = 15  # seconds to wait before broadcasting leave
+        self.reconnect_window = 30  # INCREASED from 15 to 30 seconds for production
         self.terminating_sessions = set()
     
     async def connect(self, websocket: WebSocket, session_id: str) -> bool:

@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 15; // Increased max attempts
+  private maxReconnectAttempts = 20; // Increased max attempts
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -20,6 +20,8 @@ class WebSocketService {
   private messageQueue: WebSocketMessage[] = [];
   private connectionId: string | null = null;
   private lastPongTime: number = Date.now();
+  private missedPongs = 0; // Track consecutive missed pongs
+  private maxMissedPongs = 3; // Allow 3 missed pongs before closing - NOW USED
 
   private getWebSocketUrl(sessionId: string): string {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
@@ -52,6 +54,7 @@ class WebSocketService {
     this.shouldReconnect = true;
     this.messageQueue = [];
     this.lastPongTime = Date.now();
+    this.missedPongs = 0;
 
     const newConnectionId = `${sessionId}-${Date.now()}-${Math.random()}`;
     this.connectionId = newConnectionId;
@@ -66,6 +69,7 @@ class WebSocketService {
 
           this.connectionInProgress = false;
           this.reconnectAttempts = 0;
+          this.missedPongs = 0;
           this.startHeartbeat();
           this.flushMessageQueue();
           resolve();
@@ -80,13 +84,19 @@ class WebSocketService {
             if (data.type === 'ping') {
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
               this.lastPongTime = Date.now();
+              this.missedPongs = 0; // Reset missed pongs on any message
               return;
             }
 
             if (data.type === 'pong') {
               this.lastPongTime = Date.now();
+              this.missedPongs = 0;
               return;
             }
+
+            // Reset missed pongs on any message - connection is alive
+            this.missedPongs = 0;
+            this.lastPongTime = Date.now();
 
             if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
               this.isTerminated = true;
@@ -143,18 +153,31 @@ class WebSocketService {
   private startHeartbeat() {
     this.stopHeartbeat();
     this.lastPongTime = Date.now();
+    this.missedPongs = 0;
 
-    // Send ping every 15 seconds (more forgiving)
+    // Send ping every 20 seconds (more forgiving)
     this.heartbeatTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN && !this.isTerminated && !this.terminating) {
-        // If we haven't received pong in 60 seconds, assume connection is dead
-        if (Date.now() - this.lastPongTime > 60000) { // Increased from 30000 to 60000
-          this.ws.close();
-          return;
+        // Check connection health
+        const timeSinceLastPong = Date.now() - this.lastPongTime;
+        
+        // If we haven't received pong in 45 seconds, increment missed count
+        if (timeSinceLastPong > 45000) {
+          this.missedPongs++;
+          
+          // Only close after maxMissedPongs consecutive missed pongs (3 * 45s = 135s total)
+          if (this.missedPongs >= this.maxMissedPongs) {  // NOW USING maxMissedPongs
+            this.ws.close();
+            return;
+          }
+        } else {
+          // Reset missed count if we're getting pongs
+          this.missedPongs = 0;
         }
+        
         this.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
       }
-    }, 15000); // Increased from 10000 to 15000
+    }, 20000); // Ping every 20 seconds
   }
 
   private stopHeartbeat() {
@@ -170,8 +193,8 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    // Exponential backoff with longer delays (max 60 seconds)
-    const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts - 1), 60000); // Increased max to 60s
+    // Exponential backoff with much longer delays (max 120 seconds)
+    const delay = Math.min(3000 * Math.pow(1.5, this.reconnectAttempts - 1), 120000);
 
     this.reconnectTimer = setTimeout(() => {
       if (this.currentSessionId && !this.isTerminated && this.shouldReconnect && !this.terminating) {
