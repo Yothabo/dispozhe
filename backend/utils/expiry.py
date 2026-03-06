@@ -48,20 +48,20 @@ class ExpiryService:
         db = SessionLocal()
         try:
             now = datetime.utcnow()
-            # Only expire sessions that are at least 5 seconds old and truly expired
-            # This prevents immediate expiration of new sessions
+            # Only expire sessions that are at least 60 seconds old and truly expired
+            # This prevents immediate expiration of new sessions and handles network hiccups
             expired = db.query(Session).filter(
                 Session.expires_at < now,
                 Session.status != "expired",
                 Session.status != "terminated",
-                Session.created_at < now - timedelta(seconds=5)  # Only expire sessions older than 5 seconds
+                Session.created_at < now - timedelta(seconds=60)  # Increased from 5 to 60 seconds
             ).all()
 
             for session in expired:
                 logger.info(f"Session {session.id} expired")
                 session.status = "expired"
                 session.link_active = False
-                
+
                 # Trigger callbacks
                 if session.id in self.callbacks:
                     for callback in self.callbacks[session.id]:
@@ -72,10 +72,10 @@ class ExpiryService:
                     del self.callbacks[session.id]
 
             db.commit()
-            
+
             if expired:
                 logger.info(f"Marked {len(expired)} sessions as expired")
-                
+
         except Exception as e:
             logger.error(f"Error cleaning up expired sessions: {e}")
             db.rollback()

@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10; // Increase max attempts
+  private maxReconnectAttempts = 15; // Increased max attempts
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -128,7 +128,7 @@ class WebSocketService {
           }
 
           // Don't treat production environment disconnects as permanent
-          // Let the reconnection logic handle it
+          // Let the reconnection logic handle it with longer backoff
           if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.attemptReconnect();
           }
@@ -144,17 +144,17 @@ class WebSocketService {
     this.stopHeartbeat();
     this.lastPongTime = Date.now();
 
-    // Send ping every 10 seconds
+    // Send ping every 15 seconds (more forgiving)
     this.heartbeatTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN && !this.isTerminated && !this.terminating) {
-        // If we haven't received pong in 30 seconds, assume connection is dead
-        if (Date.now() - this.lastPongTime > 30000) {
+        // If we haven't received pong in 60 seconds, assume connection is dead
+        if (Date.now() - this.lastPongTime > 60000) { // Increased from 30000 to 60000
           this.ws.close();
           return;
         }
         this.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
       }
-    }, 10000);
+    }, 15000); // Increased from 10000 to 15000
   }
 
   private stopHeartbeat() {
@@ -170,8 +170,8 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    // Exponential backoff with longer delays (max 30 seconds)
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
+    // Exponential backoff with longer delays (max 60 seconds)
+    const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts - 1), 60000); // Increased max to 60s
 
     this.reconnectTimer = setTimeout(() => {
       if (this.currentSessionId && !this.isTerminated && this.shouldReconnect && !this.terminating) {

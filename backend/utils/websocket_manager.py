@@ -83,9 +83,9 @@ class ConnectionManager:
             logger.info(f"Client disconnected from session {session_id}. Remaining: {remaining}")
 
             # Don't immediately broadcast participant_left - wait a moment for potential reconnect
-            # This handles production environment hiccups
+            # This handles production environment hiccups with longer window
             if remaining > 0 and session_id not in self.terminating_sessions:
-                # Schedule a delayed check
+                # Schedule a delayed check with longer window
                 asyncio.create_task(self.delayed_participant_check(session_id, remaining))
 
             if websocket in self.connection_times:
@@ -105,8 +105,8 @@ class ConnectionManager:
             logger.info(f"Session {session_id} has no more connections")
 
     async def delayed_participant_check(self, session_id: str, expected_remaining: int):
-        """Wait a few seconds to see if the client reconnects before broadcasting left"""
-        await asyncio.sleep(5)  # Wait 5 seconds for potential reconnect
+        """Wait longer to see if the client reconnects before broadcasting left"""
+        await asyncio.sleep(15)  # Increased from 5 to 15 seconds for potential reconnect
 
         # Check if session still exists and still has the same count
         if session_id in self.active_connections:
