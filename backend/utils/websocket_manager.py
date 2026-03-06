@@ -76,7 +76,9 @@ class ConnectionManager:
             remaining = len(self.active_connections[session_id])
             logger.info(f"Client disconnected from session {session_id}. Remaining: {remaining}")
 
-            if remaining > 0:
+            # Only broadcast participant_left if there are remaining participants
+            # and this is not a termination scenario
+            if remaining > 0 and session_id not in self.terminating_sessions:
                 try:
                     await self.broadcast_to_session(
                         session_id,
@@ -109,16 +111,16 @@ class ConnectionManager:
 
     async def send_message(self, session_id: str, message_data: dict, sender_ws: WebSocket) -> dict:
         message_id = message_data.get('id', str(uuid.uuid4()))
-        
+
         recipients = self.active_connections.get(session_id, set()) - {sender_ws}
-        
+
         if message_data.get('type') == 'file' and message_data.get('viewOnce'):
             self.view_once_files[message_id] = {
                 'session_id': session_id,
                 'data': message_data,
                 'viewed': False
             }
-        
+
         if not recipients:
             queued_msg = QueuedMessage(
                 message_id=message_id,
@@ -128,14 +130,14 @@ class ConnectionManager:
             )
             self.message_queues[session_id].append(queued_msg)
             return {'status': 'queued', 'message_id': message_id}
-        
+
         for recipient in recipients:
             try:
                 await recipient.send_text(json.dumps(message_data))
                 logger.info(f"Message {message_id} sent to recipient")
             except Exception as e:
                 logger.error(f"Failed to send message {message_id}: {e}")
-        
+
         return {'status': 'delivered', 'message_id': message_id}
 
     async def handle_file_viewed(self, session_id: str, file_id: str, viewer_ws: WebSocket):
@@ -198,10 +200,10 @@ class ConnectionManager:
         return len(self.active_connections)
 
     async def terminate_session(self, session_id: str):
-        # First, mark session as terminating to reject new connections
+        # Mark session as terminating to reject new connections
         self.terminating_sessions.add(session_id)
-        
-        # Get connections before removing
+
+        # Get connections
         connections = self.active_connections.get(session_id, set())
         if not connections:
             logger.info(f"Session {session_id} has no active connections")
@@ -210,38 +212,21 @@ class ConnectionManager:
 
         logger.info(f"Terminating session {session_id} with {len(connections)} connections")
 
-        # FIRST: Send participant_left to all remaining participants
-        # This ensures they know the session is ending before it's destroyed
-        if len(connections) > 0:
-            try:
-                await self.broadcast_to_session(
-                    session_id,
-                    json.dumps({
-                        "type": "participant_left",
-                        "participant_count": 1,  # The other participant will see count 1 (themselves)
-                        "timestamp": datetime.utcnow().isoformat()
-                    }),
-                    exclude=None
-                )
-                logger.info(f"Broadcast participant_left to session {session_id} before termination")
-            except Exception as e:
-                logger.error(f"Failed to broadcast participant_left during termination: {e}")
+        # Send participant_left to all participants first
+        # This is what the frontend expects for non-initiator
+        await self.broadcast_to_session(
+            session_id,
+            json.dumps({
+                "type": "participant_left",
+                "participant_count": 1,  # The remaining participant sees count 1 (themselves)
+                "timestamp": datetime.utcnow().isoformat()
+            }),
+            exclude=None
+        )
+        logger.info(f"Broadcast participant_left to session {session_id} during termination")
 
-        # Small delay to ensure message is sent
-        await asyncio.sleep(0.2)
-
-        # THEN: Send termination message
-        for connection in connections:
-            try:
-                await connection.send_text(json.dumps({
-                    "type": "session_terminated",
-                    "timestamp": datetime.utcnow().isoformat()
-                }))
-            except Exception as e:
-                logger.error(f"Failed to send termination message: {e}")
-
-        # Wait a moment for messages to be sent
-        await asyncio.sleep(0.3)
+        # Wait for message to be delivered
+        await asyncio.sleep(0.5)
 
         # Remove from active connections
         if session_id in self.active_connections:
@@ -261,7 +246,7 @@ class ConnectionManager:
             del self.message_status[session_id]
         if session_id in self.view_once_files:
             del self.view_once_files[session_id]
-        
+
         self.terminating_sessions.discard(session_id)
 
         # Clean up connection IDs and times
