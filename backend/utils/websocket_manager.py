@@ -35,6 +35,7 @@ class ConnectionManager:
         self.viewed_files: Set[str] = set()
         self.expiry_service = None
         self.terminating_sessions: Set[str] = set()
+        self.reconnect_window: Dict[str, float] = {}  # Track when session was last disconnected
 
     def set_expiry_service(self, expiry_service):
         self.expiry_service = expiry_service
@@ -81,22 +82,11 @@ class ConnectionManager:
             remaining = len(self.active_connections[session_id])
             logger.info(f"Client disconnected from session {session_id}. Remaining: {remaining}")
 
-            # Only broadcast participant_left if there are remaining participants
-            # and this is not a termination scenario
+            # Don't immediately broadcast participant_left - wait a moment for potential reconnect
+            # This handles production environment hiccups
             if remaining > 0 and session_id not in self.terminating_sessions:
-                try:
-                    await self.broadcast_to_session(
-                        session_id,
-                        json.dumps({
-                            "type": "participant_left",
-                            "participant_count": remaining,
-                            "timestamp": datetime.utcnow().isoformat()
-                        }),
-                        exclude=None
-                    )
-                    logger.info(f"Broadcast participant_left to session {session_id}, remaining: {remaining}")
-                except Exception as e:
-                    logger.error(f"Failed to broadcast participant_left: {e}")
+                # Schedule a delayed check
+                asyncio.create_task(self.delayed_participant_check(session_id, remaining))
 
             if websocket in self.connection_times:
                 duration = (datetime.utcnow() - self.connection_times[websocket]).total_seconds()
@@ -113,6 +103,29 @@ class ConnectionManager:
             if session_id in self.message_status:
                 del self.message_status[session_id]
             logger.info(f"Session {session_id} has no more connections")
+
+    async def delayed_participant_check(self, session_id: str, expected_remaining: int):
+        """Wait a few seconds to see if the client reconnects before broadcasting left"""
+        await asyncio.sleep(5)  # Wait 5 seconds for potential reconnect
+
+        # Check if session still exists and still has the same count
+        if session_id in self.active_connections:
+            current_remaining = len(self.active_connections[session_id])
+            if current_remaining == expected_remaining:
+                # No reconnect, broadcast left
+                try:
+                    await self.broadcast_to_session(
+                        session_id,
+                        json.dumps({
+                            "type": "participant_left",
+                            "participant_count": current_remaining,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }),
+                        exclude=None
+                    )
+                    logger.info(f"Broadcast participant_left to session {session_id}, remaining: {current_remaining}")
+                except Exception as e:
+                    logger.error(f"Failed to broadcast participant_left: {e}")
 
     async def send_message(self, session_id: str, message_data: dict, sender_ws: WebSocket) -> dict:
         message_id = message_data.get('id', str(uuid.uuid4()))
@@ -139,7 +152,7 @@ class ConnectionManager:
         for recipient in recipients:
             try:
                 await recipient.send_text(json.dumps(message_data))
-                logger.info(f"Message {message_id} sent to recipient")
+                logger.debug(f"Message {message_id} sent to recipient")
             except Exception as e:
                 logger.error(f"Failed to send message {message_id}: {e}")
 

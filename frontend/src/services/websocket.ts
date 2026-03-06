@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10; // Increase max attempts
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -19,6 +19,7 @@ class WebSocketService {
   private terminating = false;
   private messageQueue: WebSocketMessage[] = [];
   private connectionId: string | null = null;
+  private lastPongTime: number = Date.now();
 
   private getWebSocketUrl(sessionId: string): string {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
@@ -50,6 +51,7 @@ class WebSocketService {
     this.reconnectAttempts = 0;
     this.shouldReconnect = true;
     this.messageQueue = [];
+    this.lastPongTime = Date.now();
 
     const newConnectionId = `${sessionId}-${Date.now()}-${Math.random()}`;
     this.connectionId = newConnectionId;
@@ -77,14 +79,16 @@ class WebSocketService {
 
             if (data.type === 'ping') {
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
+              this.lastPongTime = Date.now();
               return;
             }
 
             if (data.type === 'pong') {
+              this.lastPongTime = Date.now();
               return;
             }
 
-            if (data.type === 'destroying_session' || data.type === 'participant_leaving' || data.type === 'participant_left') {
+            if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
               this.isTerminated = true;
               this.shouldReconnect = false;
               this.terminating = true;
@@ -119,10 +123,12 @@ class WebSocketService {
             return;
           }
 
-          if (event && event.code === 1000) {
+          if (event.code === 1000) {
             return;
           }
 
+          // Don't treat production environment disconnects as permanent
+          // Let the reconnection logic handle it
           if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.attemptReconnect();
           }
@@ -136,11 +142,19 @@ class WebSocketService {
 
   private startHeartbeat() {
     this.stopHeartbeat();
+    this.lastPongTime = Date.now();
+
+    // Send ping every 10 seconds
     this.heartbeatTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN && !this.isTerminated && !this.terminating) {
+        // If we haven't received pong in 30 seconds, assume connection is dead
+        if (Date.now() - this.lastPongTime > 30000) {
+          this.ws.close();
+          return;
+        }
         this.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
       }
-    }, 25000);
+    }, 10000);
   }
 
   private stopHeartbeat() {
@@ -156,7 +170,8 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 8000);
+    // Exponential backoff with longer delays (max 30 seconds)
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
 
     this.reconnectTimer = setTimeout(() => {
       if (this.currentSessionId && !this.isTerminated && this.shouldReconnect && !this.terminating) {

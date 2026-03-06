@@ -270,12 +270,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         async def heartbeat():
             try:
                 while True:
-                    await asyncio.sleep(25)
-                    if websocket.client_state.value == 1:  # Still connected
-                        await websocket.send_text(json.dumps({
-                            "type": "ping",
-                            "timestamp": datetime.utcnow().isoformat()
-                        }))
+                    await asyncio.sleep(15)  # More frequent heartbeats (15s instead of 25s)
+                    try:
+                        if websocket.client_state.value == 1:  # Still connected
+                            await websocket.send_text(json.dumps({
+                                "type": "ping",
+                                "timestamp": datetime.utcnow().isoformat()
+                            }))
+                    except Exception:
+                        # Connection likely dead, exit heartbeat
+                        break
             except Exception:
                 pass
 
@@ -325,7 +329,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     )
 
         except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected from session {session_id} - this is NOT termination")
+            logger.info(f"WebSocket disconnected from session {session_id}")
             await app.state.manager.disconnect(websocket, session_id)
         except Exception as e:
             logger.error(f"WebSocket error for session {session_id}: {e}")
