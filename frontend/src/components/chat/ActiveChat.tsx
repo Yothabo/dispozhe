@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import useKeyboard from '../../hooks/useKeyboard';
@@ -26,7 +26,7 @@ import SessionDestroyedView from './termination/views/SessionDestroyedView';
 interface ActiveChatProps {
   sessionId: string;
   duration: number;
-  _encryptionKey?: string; // kept for API compatibility
+  _encryptionKey?: string;
   onTerminate: () => void;
 }
 
@@ -41,7 +41,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const [isSendingFile, setIsSendingFile] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [_isTerminatingProcess, setIsTerminatingProcess] = useState(false);
-  const [timeUpMessageSent, setTimeUpMessageSent] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +48,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
   const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
+  const sessionEnded = useRef<boolean>(false);
 
   const keyboardHeight = useKeyboard();
 
@@ -74,30 +74,29 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     handleTypingIndicator
   } = useChatTyping();
 
-  const handleTimeUp = useCallback(() => {
-    if (timeUpMessageSent) return;
-    setTimeUpMessageSent(true);
-
-    addMessage({
-      id: `system-timeup-${Date.now()}`,
-      text: 'Session time has expired',
-      sender: 'system',
-      timestamp: Date.now()
-    });
-
-    // Optionally redirect or show expired UI
-  }, [addMessage, timeUpMessageSent]);
-
   const {
     timeLeft,
     formatTime,
     timeUp,
     stopTimer
   } = useChatTimer({
+    sessionId,
     initialDuration: duration,
     isConnected,
-    onTimeUp: handleTimeUp,
-    sessionId
+    onTimeUp: () => {
+      if (sessionEnded.current) return;
+      sessionEnded.current = true;
+      
+      addMessage({
+        id: `system-timeup-${Date.now()}`,
+        text: 'Session time has expired',
+        sender: 'system',
+        timestamp: Date.now()
+      });
+      
+      // Disconnect WebSocket
+      wsService.disconnect();
+    }
   });
 
   const {
@@ -166,7 +165,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     terminationCompleted,
     showSecondUserTermination,
     onStatusUpdate: () => {},
-    onSessionEnded: () => {},
+    onSessionEnded: () => {
+      // Session ended on server, stop everything
+      sessionEnded.current = true;
+      stopTimer();
+      wsService.disconnect();
+    },
     connectionId
   });
 
@@ -227,6 +231,14 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
+  // Handle server-driven time up
+  useEffect(() => {
+    if (timeUp && !sessionEnded.current) {
+      sessionEnded.current = true;
+      wsService.disconnect();
+    }
+  }, [timeUp]);
+
   if (sessionChecking) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-navy">
@@ -239,7 +251,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   }
 
   const handleSend = () => {
-    if (!inputText.trim() || !isConnected || isTerminating || otherUserLeft || showSecondUserTermination || timeUp) return;
+    if (!inputText.trim() || !isConnected || isTerminating || otherUserLeft || showSecondUserTermination || timeUp || sessionEnded.current) return;
 
     const id = crypto.randomUUID();
     const encoder = new TextEncoder();
@@ -261,6 +273,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   };
 
   const handleTypingWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (sessionEnded.current) return;
     handleTyping(
       e,
       isTerminating,
@@ -281,6 +294,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     setIsTerminatingProcess(true);
     wsService.setTerminating();
     setTerminatingState(true);
+    sessionEnded.current = true;
     setTimeout(() => {
       handleInitiatorTerminate();
     }, 50);
@@ -316,11 +330,11 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
           formatTime={formatTime}
           onTerminate={handleTerminate}
           onExtend={() => {}}
-          isTerminated={otherUserLeft || timeUp}
+          isTerminated={otherUserLeft || timeUp || sessionEnded.current}
         />
       </div>
 
-      {!isConnected && !otherUserLeft && !timeUp && (
+      {!isConnected && !otherUserLeft && !timeUp && !sessionEnded.current && (
         <div className="h-[41px] flex-shrink-0 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center justify-center">
           <p className="text-yellow-400 text-xs">Establishing secure connection...</p>
         </div>
@@ -335,14 +349,14 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
             messages={messages}
             otherUserTyping={otherUserTyping}
             otherUserLeft={otherUserLeft}
-            timeUp={timeUp}
+            timeUp={timeUp || sessionEnded.current}
             onViewFile={handleViewFile}
             messagesEndRef={messagesEndRef}
           />
         </div>
       </div>
 
-      {!otherUserLeft && !timeUp ? (
+      {!otherUserLeft && !timeUp && !sessionEnded.current ? (
         <div
           className="bg-navy border-t border-white/10 flex-shrink-0"
           style={{ paddingBottom: keyboardHeight }}

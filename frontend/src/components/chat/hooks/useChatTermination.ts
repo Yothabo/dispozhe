@@ -6,7 +6,7 @@ import { notifyManagement } from '../../NotificationCenter';
 
 export const useChatTermination = (
   sessionId: string,
-  _onTerminate?: () => void, // kept for API compatibility, prefixed with underscore
+  _onTerminate?: () => void,
   stopTimer?: () => void
 ) => {
   const [showTerminateModal, setShowTerminateModal] = useState(false);
@@ -33,25 +33,36 @@ export const useChatTermination = (
     { id: 5, label: 'Purge all traces from database', status: 'pending' }
   ]);
 
-  const handleInitiatorTerminate = useCallback(() => {
+  const handleInitiatorTerminate = useCallback(async () => {
     if (isTerminating || terminationCompleted || otherUserLeft || showSecondUserTermination) return;
 
     setIsTerminating(true);
     setShowTerminateModal(false);
+    
+    // Stop the timer immediately
     if (stopTimer) stopTimer();
 
     sessionStorage.removeItem(`Driflly_messages_${sessionId}`);
 
     setTerminationSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
 
+    // First, terminate the session on the server
     try {
+      await api.terminateSession(sessionId);
+      
+      // Send leaving notification to other participants
       wsService.sendMessage({ type: 'participant_leaving', timestamp: Date.now() });
-    } catch {
-      // Ignore send errors
+      
+      // Disconnect WebSocket
+      wsService.disconnect();
+      
+      notifyManagement('Session termination initiated', 'info');
+    } catch (err) {
+      console.error('Failed to terminate session on server:', err);
+      notifyManagement('Failed to terminate session', 'error');
     }
 
-    notifyManagement('Session termination initiated', 'info');
-
+    // Run animation steps
     terminationSteps.forEach((item, index) => {
       const timeout1 = setTimeout(() => {
         if (mountedRef.current) {
@@ -72,36 +83,31 @@ export const useChatTermination = (
       animationTimeouts.current.push(timeout1, timeout2);
     });
 
-    const timeout3 = setTimeout(async () => {
+    // Mark as completed after animation
+    setTimeout(() => {
       if (mountedRef.current) {
         setTerminationCompleted(true);
         setIsTerminating(false);
-
-        try {
-          await api.terminateSession(sessionId);
-          sessionStorage.removeItem(`Driflly_initiator_${sessionId}`);
-          sessionStorage.removeItem(`Driflly_code_${sessionId}`);
-          wsService.disconnect();
-          notifyManagement('Session terminated successfully', 'success');
-        } catch (err) {
-          console.error('Termination failed:', err);
-          notifyManagement('Failed to terminate session', 'error');
-        }
+        notifyManagement('Session terminated successfully', 'success');
       }
     }, terminationSteps.length * 400 + 800);
 
-    animationTimeouts.current.push(timeout3);
   }, [sessionId, terminationSteps, isTerminating, terminationCompleted, otherUserLeft, showSecondUserTermination, stopTimer]);
 
   const handleSecondUserTerminate = useCallback(() => {
     if (showSecondUserTermination || terminationCompleted) return;
 
     setShowSecondUserTermination(true);
+    
+    // Stop the timer immediately
     if (stopTimer) stopTimer();
 
     setSecondUserSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
 
     notifyManagement('Other user terminated session', 'warning');
+
+    // Disconnect WebSocket
+    wsService.disconnect();
 
     secondUserSteps.forEach((item, index) => {
       const timeout1 = setTimeout(() => {
@@ -123,21 +129,20 @@ export const useChatTermination = (
       animationTimeouts.current.push(timeout1, timeout2);
     });
 
-    const timeout3 = setTimeout(() => {
+    setTimeout(() => {
       if (mountedRef.current) {
         setTerminationCompleted(true);
         setShowSecondUserTermination(false);
         sessionStorage.removeItem(`Driflly_messages_${sessionId}`);
-        wsService.disconnect();
       }
     }, secondUserSteps.length * 400 + 800);
-
-    animationTimeouts.current.push(timeout3);
   }, [secondUserSteps, sessionId, showSecondUserTermination, terminationCompleted, stopTimer]);
 
   const handleParticipantLeaving = useCallback(() => {
     setOtherUserLeft(true);
-  }, []);
+    // Stop the timer when other user leaves
+    if (stopTimer) stopTimer();
+  }, [stopTimer]);
 
   return {
     showTerminateModal,
