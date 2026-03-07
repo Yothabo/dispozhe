@@ -93,9 +93,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
         sender: 'system',
         timestamp: Date.now()
       });
-
-      // Don't disconnect WebSocket here - let the timer naturally expire
-      // The server will handle the expiry
     }
   });
 
@@ -160,34 +157,15 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     connectionId
   });
 
-  // Fixed: Use onSessionExpired instead of onSessionEnded
+  // Use session polling but prevent duplicate expiry
   useSessionPolling({
     sessionId,
     terminationCompleted,
     showSecondUserTermination,
-    onStatusUpdate: () => {}, // Empty function as we don't need status updates
-    onSessionExpired: () => {  // Renamed from onSessionEnded
-      // Only handle natural expiry, not termination
-      if (sessionEnded.current) return;
-      
-      sessionEnded.current = true;
-      stopTimer();
-      
-      // Don't disconnect WebSocket here - let the server handle it
-      // Just show expiry message
-      addMessage({
-        id: `system-expiry-${Date.now()}`,
-        text: 'Session has expired',
-        sender: 'system',
-        timestamp: Date.now()
-      });
-      
-      // Disconnect after showing message (optional)
-      setTimeout(() => {
-        if (mountedRef.current) {
-          wsService.disconnect();
-        }
-      }, 1000);
+    onStatusUpdate: () => {},
+    onSessionExpired: () => {
+      // Expiry is now handled by useChatTimer only
+      // This prevents duplicate messages
     },
     connectionId
   });
@@ -206,7 +184,7 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
       if (connected !== isConnected) {
         setIsConnected(connected);
       }
-    }, 3000); // Reduced frequency from 2000 to 3000ms
+    }, 3000);
     return () => clearInterval(interval);
   }, [isConnected]);
 
@@ -248,9 +226,6 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
     if (!messagesEndRef.current) return;
     messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
-
-  // REMOVED: The problematic timeUp effect that was disconnecting WebSocket
-  // Now we let the timer naturally expire and show the expiry message
 
   if (sessionChecking) {
     return (

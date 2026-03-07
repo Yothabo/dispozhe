@@ -23,12 +23,11 @@ export const useChatTimer = ({
 }: UseChatTimerProps) => {
   const [timeLeft, setTimeLeft] = useState<number>(initialDuration * 60);
   const [timeUp, setTimeUp] = useState<boolean>(false);
-  const [serverTimeLeft, setServerTimeLeft] = useState<number | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const timeUpRef = useRef<boolean>(false);
   const sessionEnded = useRef<boolean>(false);
-  const lastServerTime = useRef<number | null>(null);
   const syncAttempts = useRef<number>(0);
+  const expiryNotified = useRef<boolean>(false); // Prevent multiple expiry notifications
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -44,39 +43,45 @@ export const useChatTimer = ({
     sessionEnded.current = true;
   }, []);
 
+  // Single source of truth for expiry
+  const handleExpiry = useCallback(() => {
+    if (expiryNotified.current || timeUpRef.current || sessionEnded.current) return;
+    
+    expiryNotified.current = true;
+    timeUpRef.current = true;
+    setTimeUp(true);
+    onTimeUp();
+    stopTimer();
+  }, [onTimeUp, stopTimer]);
+
   // Fetch current time from server
   const fetchServerTime = useCallback(async () => {
-    if (sessionEnded.current || timeUpRef.current) return;
+    if (sessionEnded.current || timeUpRef.current || expiryNotified.current) return;
 
     try {
       const status = await api.getSessionStatus(sessionId);
-      
-      // If session no longer exists, trigger time up
-      if (!status || status.status === 'terminated' || status.status === 'expired') {
-        if (!timeUpRef.current && !sessionEnded.current) {
-          timeUpRef.current = true;
-          setTimeUp(true);
-          onTimeUp();
-          stopTimer();
-        }
+
+      // If session no longer exists or is expired, trigger expiry
+      if (!status) {
+        handleExpiry();
+        return;
+      }
+
+      // Check status first - this is the source of truth
+      if (status.status === 'expired' || status.status === 'terminated') {
+        handleExpiry();
         return;
       }
 
       const serverSeconds = status.time_left_seconds;
-      
-      // Update server time reference
-      lastServerTime.current = serverSeconds;
-      setServerTimeLeft(serverSeconds);
-      
-      // Always trust server time over client calculation
+
+      // Update display time
       setTimeLeft(serverSeconds);
-      
+
       // Check if time is up according to server
-      if (serverSeconds <= 0 && !timeUpRef.current && !sessionEnded.current) {
-        timeUpRef.current = true;
-        setTimeUp(true);
-        onTimeUp();
-        stopTimer();
+      if (serverSeconds <= 0) {
+        handleExpiry();
+        return;
       }
 
       // Reset sync attempts on successful fetch
@@ -84,33 +89,28 @@ export const useChatTimer = ({
 
     } catch (error) {
       console.error('Failed to fetch server time:', error);
-      
+
       // If we fail to fetch multiple times, assume session is dead
       syncAttempts.current++;
       if (syncAttempts.current > 3 && !timeUpRef.current && !sessionEnded.current) {
-        timeUpRef.current = true;
-        setTimeUp(true);
-        onTimeUp();
-        stopTimer();
+        handleExpiry();
       }
     }
-  }, [sessionId, onTimeUp, stopTimer]);
+  }, [sessionId, handleExpiry]);
 
   // Listen for WebSocket messages about time
   useEffect(() => {
     const handleTimeMessage = (data: WebSocketMessage) => {
+      if (sessionEnded.current || timeUpRef.current || expiryNotified.current) return;
+
       if (data.type === 'time_update' && typeof data.time_left === 'number') {
         setTimeLeft(data.time_left);
-        setServerTimeLeft(data.time_left);
-        
-        if (data.time_left <= 0 && !timeUpRef.current && !sessionEnded.current) {
-          timeUpRef.current = true;
-          setTimeUp(true);
-          onTimeUp();
-          stopTimer();
+
+        if (data.time_left <= 0) {
+          handleExpiry();
         }
       }
-      
+
       if (data.type === 'session_terminated' || data.type === 'participant_left') {
         sessionEnded.current = true;
         stopTimer();
@@ -119,11 +119,11 @@ export const useChatTimer = ({
 
     wsService.addMessageHandler(handleTimeMessage);
     return () => wsService.removeMessageHandler(handleTimeMessage);
-  }, [onTimeUp, stopTimer]);
+  }, [handleExpiry, stopTimer]);
 
   // Poll server for time updates
   useEffect(() => {
-    if (!sessionId || !isConnected || sessionEnded.current || timeUpRef.current) return;
+    if (!sessionId || !isConnected || sessionEnded.current || timeUpRef.current || expiryNotified.current) return;
 
     // Fetch immediately on mount/connect
     fetchServerTime();
@@ -139,10 +139,10 @@ export const useChatTimer = ({
     };
   }, [sessionId, isConnected, fetchServerTime]);
 
-  // Also sync on visibility change (when user returns to tab)
+  // Sync on visibility change (when user returns to tab)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !sessionEnded.current && !timeUpRef.current) {
+      if (document.visibilityState === 'visible' && !sessionEnded.current && !timeUpRef.current && !expiryNotified.current) {
         fetchServerTime();
       }
     };
@@ -155,7 +155,6 @@ export const useChatTimer = ({
     timeLeft,
     formatTime,
     timeUp,
-    stopTimer,
-    serverTimeLeft
+    stopTimer
   };
 };
