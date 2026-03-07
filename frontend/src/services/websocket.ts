@@ -10,7 +10,7 @@ class WebSocketService {
   private currentSessionId: string | null = null;
   private messageHandlers: Set<MessageHandler> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 20; // Increased max attempts
+  private maxReconnectAttempts = 50;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = true;
@@ -20,8 +20,26 @@ class WebSocketService {
   private messageQueue: WebSocketMessage[] = [];
   private connectionId: string | null = null;
   private lastPongTime: number = Date.now();
-  private missedPongs = 0; // Track consecutive missed pongs
-  private maxMissedPongs = 3; // Allow 3 missed pongs before closing - NOW USED
+  private missedPongs = 0;
+  private maxMissedPongs = 6;
+  private lastActiveTime: number = Date.now();
+  private isVisible: boolean = !document.hidden;
+  private backgroundCheckInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+  }
+
+  private handleVisibilityChange = () => {
+    this.isVisible = !document.hidden;
+    
+    if (this.isVisible && this.currentSessionId && !this.isConnected() && !this.terminating) {
+      this.reconnectAttempts = 0;
+      this.connect(this.currentSessionId).catch(() => {
+        // Silently handle connection error - will retry via reconnect mechanism
+      });
+    }
+  };
 
   private getWebSocketUrl(sessionId: string): string {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://dispozhe.onrender.com';
@@ -54,6 +72,7 @@ class WebSocketService {
     this.shouldReconnect = true;
     this.messageQueue = [];
     this.lastPongTime = Date.now();
+    this.lastActiveTime = Date.now();
     this.missedPongs = 0;
 
     const newConnectionId = `${sessionId}-${Date.now()}-${Math.random()}`;
@@ -70,33 +89,72 @@ class WebSocketService {
           this.connectionInProgress = false;
           this.reconnectAttempts = 0;
           this.missedPongs = 0;
+          this.lastActiveTime = Date.now();
           this.startHeartbeat();
+          this.startBackgroundCheck();
           this.flushMessageQueue();
+          
+          this.messageHandlers.forEach(handler => {
+            try {
+              handler({ 
+                type: 'connection_restored',
+                timestamp: Date.now()
+              });
+            } catch {
+              // Ignore handler errors
+            }
+          });
+          
           resolve();
         };
 
         this.ws.onmessage = (event) => {
           if (this.connectionId !== newConnectionId) return;
 
+          this.lastActiveTime = Date.now();
+          this.lastPongTime = Date.now();
+          this.missedPongs = 0;
+
           try {
             const data = JSON.parse(event.data) as WebSocketMessage;
 
             if (data.type === 'ping') {
               this.sendMessage({ type: 'pong', timestamp: Date.now() });
-              this.lastPongTime = Date.now();
-              this.missedPongs = 0; // Reset missed pongs on any message
               return;
             }
 
             if (data.type === 'pong') {
-              this.lastPongTime = Date.now();
-              this.missedPongs = 0;
               return;
             }
 
-            // Reset missed pongs on any message - connection is alive
-            this.missedPongs = 0;
-            this.lastPongTime = Date.now();
+            if (data.type === 'participant_away') {
+              this.messageHandlers.forEach(handler => {
+                try {
+                  handler({
+                    type: 'user_away',
+                    message: data.message,
+                    timestamp: Date.now()
+                  });
+                } catch {
+                  // Ignore handler errors
+                }
+              });
+              return;
+            }
+
+            if (data.type === 'participant_reconnected') {
+              this.messageHandlers.forEach(handler => {
+                try {
+                  handler({
+                    type: 'user_returned',
+                    timestamp: Date.now()
+                  });
+                } catch {
+                  // Ignore handler errors
+                }
+              });
+              return;
+            }
 
             if (data.type === 'destroying_session' || data.type === 'participant_leaving') {
               this.isTerminated = true;
@@ -118,7 +176,6 @@ class WebSocketService {
 
         this.ws.onerror = () => {
           if (this.connectionId !== newConnectionId) return;
-
           this.connectionInProgress = false;
           reject(new Error('WebSocket connection error'));
         };
@@ -137,10 +194,17 @@ class WebSocketService {
             return;
           }
 
-          // Don't treat production environment disconnects as permanent
-          // Let the reconnection logic handle it with longer backoff
+          if (!this.isVisible) {
+            setTimeout(() => {
+              if (this.shouldReconnect && !this.terminating) {
+                this.attemptReconnect(true);
+              }
+            }, 30000);
+            return;
+          }
+
           if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.attemptReconnect();
+            this.attemptReconnect(false);
           }
         };
       } catch (error) {
@@ -150,34 +214,61 @@ class WebSocketService {
     });
   }
 
+  private startBackgroundCheck() {
+    this.stopBackgroundCheck();
+    
+    this.backgroundCheckInterval = setInterval(() => {
+      if (!this.isVisible && this.isConnected()) {
+        this.sendMessage({ type: 'background_keepalive', timestamp: Date.now() });
+      }
+      
+      const inactiveTime = Date.now() - this.lastActiveTime;
+      if (inactiveTime > 30 * 60 * 1000) {
+        this.messageHandlers.forEach(handler => {
+          try {
+            handler({ 
+              type: 'session_timeout',
+              reason: 'inactivity'
+            });
+          } catch {
+            // Ignore handler errors
+          }
+        });
+        this.disconnect();
+      }
+    }, 60000);
+  }
+
+  private stopBackgroundCheck() {
+    if (this.backgroundCheckInterval) {
+      clearInterval(this.backgroundCheckInterval);
+      this.backgroundCheckInterval = null;
+    }
+  }
+
   private startHeartbeat() {
     this.stopHeartbeat();
     this.lastPongTime = Date.now();
     this.missedPongs = 0;
 
-    // Send ping every 20 seconds (more forgiving)
     this.heartbeatTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN && !this.isTerminated && !this.terminating) {
-        // Check connection health
         const timeSinceLastPong = Date.now() - this.lastPongTime;
         
-        // If we haven't received pong in 45 seconds, increment missed count
         if (timeSinceLastPong > 45000) {
           this.missedPongs++;
           
-          // Only close after maxMissedPongs consecutive missed pongs (3 * 45s = 135s total)
-          if (this.missedPongs >= this.maxMissedPongs) {  // NOW USING maxMissedPongs
+          if (this.missedPongs >= this.maxMissedPongs) {
             this.ws.close();
             return;
           }
         } else {
-          // Reset missed count if we're getting pongs
           this.missedPongs = 0;
         }
         
         this.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
       }
-    }, 20000); // Ping every 20 seconds
+    }, 20000);
   }
 
   private stopHeartbeat() {
@@ -187,18 +278,25 @@ class WebSocketService {
     }
   }
 
-  private attemptReconnect() {
+  private attemptReconnect(isBackground: boolean = false) {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
     }
 
     this.reconnectAttempts++;
-    // Exponential backoff with much longer delays (max 120 seconds)
-    const delay = Math.min(3000 * Math.pow(1.5, this.reconnectAttempts - 1), 120000);
+    
+    let delay;
+    if (isBackground) {
+      delay = 60000;
+    } else {
+      delay = Math.min(5000 * Math.pow(1.5, this.reconnectAttempts - 1), 300000);
+    }
 
     this.reconnectTimer = setTimeout(() => {
       if (this.currentSessionId && !this.isTerminated && this.shouldReconnect && !this.terminating) {
-        this.connect(this.currentSessionId).catch(() => {});
+        this.connect(this.currentSessionId).catch(() => {
+          // Silently handle connection error - will retry via reconnect mechanism
+        });
       }
     }, delay);
   }
@@ -224,6 +322,7 @@ class WebSocketService {
     }
 
     this.stopHeartbeat();
+    this.stopBackgroundCheck();
 
     if (this.ws) {
       this.ws.close(1000, 'Manual disconnect');
@@ -240,6 +339,8 @@ class WebSocketService {
     if (this.terminating || this.isTerminated) {
       return false;
     }
+
+    this.lastActiveTime = Date.now();
 
     if (this.ws?.readyState === WebSocket.OPEN) {
       try {
@@ -278,6 +379,10 @@ class WebSocketService {
 
   isTerminating(): boolean {
     return this.terminating;
+  }
+
+  getLastActiveTime(): number {
+    return this.lastActiveTime;
   }
 }
 
