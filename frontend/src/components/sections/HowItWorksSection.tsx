@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaPlus, FaShare, FaLock, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaShare, FaLock, FaTrash, FaClock } from 'react-icons/fa';
 
 const HowItWorksSection: React.FC = () => {
   return (
@@ -19,7 +19,7 @@ const HowItWorksSection: React.FC = () => {
             <div className="step-content">
               <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-white mb-1 sm:mb-2">Session creation</h3>
               <p className="text-grey text-xs sm:text-sm lg:text-base leading-relaxed font-light">
-                Users initiate a chat by selecting a duration. An encryption key is generated locally on the user&apos;s device and is never transmitted to servers.
+                Users initiate a chat with a default 5-minute duration, which can be extended during the conversation. An encryption key is generated locally on the user&apos;s device and is never transmitted to servers.
               </p>
             </div>
             <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl sm:rounded-2xl bg-sky/10 flex items-center justify-center">
@@ -53,9 +53,21 @@ const HowItWorksSection: React.FC = () => {
           <div className="glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 grid grid-cols-[auto,1fr,auto] gap-3 sm:gap-4 lg:gap-8 items-start w-full">
             <div className="step-number text-2xl sm:text-3xl lg:text-4xl xl:text-5xl">04</div>
             <div className="step-content">
+              <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-white mb-1 sm:mb-2">Flexible duration</h3>
+              <p className="text-grey text-xs sm:text-sm lg:text-base leading-relaxed font-light">
+                Sessions start with a 5-minute timer that can be extended by either participant. The timer is always visible and updates in real-time.
+              </p>
+            </div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl sm:rounded-2xl bg-sky/10 flex items-center justify-center">
+              <FaClock className="text-sky text-sm sm:text-base lg:text-lg" />
+            </div>
+          </div>
+          <div className="glass rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 grid grid-cols-[auto,1fr,auto] gap-3 sm:gap-4 lg:gap-8 items-start w-full">
+            <div className="step-number text-2xl sm:text-3xl lg:text-4xl xl:text-5xl">05</div>
+            <div className="step-content">
               <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-white mb-1 sm:mb-2">Session termination</h3>
               <p className="text-grey text-xs sm:text-sm lg:text-base leading-relaxed font-light">
-                Sessions terminate automatically when the configured duration expires or can be terminated manually by either participant. All session data is permanently deleted.
+                Sessions terminate automatically when the timer expires or can be terminated manually by either participant. All session data is permanently deleted.
               </p>
             </div>
             <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl sm:rounded-2xl bg-sky/10 flex items-center justify-center">

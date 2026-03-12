@@ -1,0 +1,8 @@
+# Backup database daily at 2 AM
+0 2 * * * /root/chatie/backup.sh >> /var/log/chatie/backup.log 2>&1
+
+# Monitor every 5 minutes
+*/5 * * * * /root/chatie/monitor.sh >> /var/log/chatie/monitor.log 2>&1
+
+# Renew SSL certificate every month (certbot auto-renew)
+0 0 1 * * certbot renew --quiet

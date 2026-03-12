@@ -3,18 +3,23 @@ import { FaCheck, FaPlus, FaHome } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 interface SessionDestroyedViewProps {
-  _onNewChat?: () => void; // kept for API compatibility
-  _onClose?: () => void;
+  onNewChat?: () => void;
+  onClose?: () => void;
 }
 
-const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = () => {
+const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = ({ 
+  onNewChat, 
+  onClose 
+}) => {
   const navigate = useNavigate();
 
   const handleNewChat = () => {
+    sessionStorage.clear();
     navigate('/create');
   };
 
   const handleHome = () => {
+    sessionStorage.clear();
     navigate('/');
   };
 
@@ -27,19 +32,19 @@ const SessionDestroyedView: React.FC<SessionDestroyedViewProps> = () => {
 
         <h2 className="text-2xl font-bold text-white mb-3 text-center">Session Destroyed</h2>
         <p className="text-grey mb-8 text-center">
-          The chat session has been permanently deleted. All data has been wiped from our servers.
+          The chat session has been permanently deleted. All encrypted data has been wiped from memory.
         </p>
 
         <div className="flex gap-3">
           <button
-            onClick={handleNewChat}
+            onClick={onNewChat || handleNewChat}
             className="flex-1 px-4 py-3 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors flex items-center justify-center gap-2"
           >
             <FaPlus className="w-4 h-4" />
             New Chat
           </button>
           <button
-            onClick={handleHome}
+            onClick={onClose || handleHome}
             className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-colors border border-white/10 flex items-center justify-center gap-2"
           >
             <FaHome className="w-4 h-4" />

@@ -1,7 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ActiveChat from '../components/chat/ActiveChat';
-import ErrorBoundary from '../components/ErrorBoundary';
 
 const ChatPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -9,6 +8,8 @@ const ChatPage: React.FC = () => {
   const encryptionKey = window.location.hash.substring(1);
 
   if (!sessionId || !encryptionKey) {
+    console.error('Missing sessionId or encryption key');
+    navigate('/');
     return null;
   }
 
@@ -17,14 +18,12 @@ const ChatPage: React.FC = () => {
   };
 
   return (
-    <ErrorBoundary>
-      <ActiveChat
-        sessionId={sessionId}
-        duration={5}
-        _encryptionKey={encryptionKey}
-        onTerminate={handleClose}
-      />
-    </ErrorBoundary>
+    <ActiveChat
+      sessionId={sessionId}
+      duration={5}
+      encryptionKey={encryptionKey}
+      onTerminate={handleClose}
+    />
   );
 };
 

@@ -13,10 +13,6 @@ function App() {
     setHasStarted(true);
   };
 
-  const handleExit = () => {
-    setHasStarted(false);
-  };
-
   return (
     <ErrorBoundary>
       <div className="relative min-h-screen">
@@ -26,7 +22,7 @@ function App() {
           {!hasStarted ? (
             <LandingPage onStartChat={handleStartChat} />
           ) : (
-            <CreateSessionPage onExit={handleExit} />
+            <CreateSessionPage />
           )}
         </div>
       </div>

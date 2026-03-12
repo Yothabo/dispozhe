@@ -1,7 +1,7 @@
 export interface Message {
   id: string;
   text: string;
-  sender: 'me' | 'them';
+  sender: 'me' | 'them' | 'system';
   timestamp: number;
   status: 'sending' | 'sent' | 'delivered' | 'read';
   readAt?: number;

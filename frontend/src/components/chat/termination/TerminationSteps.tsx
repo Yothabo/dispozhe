@@ -1,7 +1,11 @@
 import React from 'react';
 import { FaCheck, FaSpinner } from 'react-icons/fa';
 
-import { TerminationStep } from '../types';
+interface TerminationStep {
+  id: number;
+  label: string;
+  status: 'pending' | 'loading' | 'completed';
+}
 
 interface TerminationStepsProps {
   steps: TerminationStep[];

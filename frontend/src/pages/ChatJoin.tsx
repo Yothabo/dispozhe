@@ -43,14 +43,15 @@ const ChatJoin: React.FC = () => {
           return;
         }
 
-        const isInitiator = sessionStorage.getItem(`chatlly_initiator_${sessionId}`) === 'true';
+        const isInitiator = sessionStorage.getItem(`Driflly_initiator_${sessionId}`) === 'true';
+        
         if (isInitiator) {
           navigate(`/waiting/${sessionId}#${key}`, { replace: true });
           return;
         }
 
         const joinResult = await api.joinSession(sessionId);
-        
+
         if (joinResult.status === 'active') {
           navigate(`/chat/${sessionId}#${key}`, { replace: true });
         } else {

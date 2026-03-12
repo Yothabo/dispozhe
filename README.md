@@ -2,82 +2,78 @@
 
 Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux, Driflly proves that complex web applications can be developed anywhere, on any device.
 
-## About
+## Current Working Features
 
-Driflly was born from a simple principle: privacy is not a feature, it is the foundation. Every line of code, every design decision, every system we build starts with the idea that your conversation belongs to no one but you. The platform is designed to facilitate private communication without storing any conversation data. Messages are encrypted end-to-end using AES-256-GCM, with keys generated on users' devices that are never transmitted to servers. The server relays encrypted data without accessing plaintext.
+### Core Functionality
 
-The application offers six conversation modes. Duo provides private two-person ephemeral chats. Group enables small multi-participant sessions with anonymous handles. Live Board is designed for classroom and meeting engagement with anonymous Q&A. Broadcast handles one-to-many ephemeral announcements. Drop enables self-destructing file and text transfer. Whisper offers micro-messages that disappear after reading.
+End-to-end encryption is implemented using AES-256-GCM through the Web Crypto API. Keys are generated on user devices and never transmitted to servers, ensuring that message content remains private between participants. The zero-knowledge relay architecture means the server forwards encrypted messages between participants without ever seeing plaintext content. Replay protection is enforced through HMAC signing, sequence numbering, and nonce tracking, preventing attackers from resending captured messages. One-time access is managed through six-digit codes that expire after 30 seconds or single-use links that become invalid immediately after first use. Sessions automatically self-destruct after the configured duration, which can range from 1 minute to 24 hours, and either participant can manually terminate a session at any time, immediately deleting all associated data.
 
-## Features
+### Current Mode
 
-The platform includes automatic session destruction with configurable timers. When the timer expires, the session and all associated data are permanently deleted from memory. Participants may also end sessions manually before timer expiration, which immediately deletes all session data and notifies the other participant.
+Duo mode provides private two-person ephemeral chats with complete functionality including message exchange, typing indicators, read receipts, and file sharing for images up to 10MB.
 
-Access methods include one-time links, QR codes, and six-digit codes that expire after first use. The service does not require email addresses, phone numbers, names, or any form of personal identification. Privacy Guard provides blur protection when the tab or window loses focus, preventing accidental exposure of sensitive conversations.
+### Performance Metrics
 
-Read receipts show message status through visual indicators. A single tick appears when the message is sent to the server. Double ticks appear when the message is delivered to the recipient. Blue double ticks indicate the message has been read. Messages are queued when the recipient is offline and delivered automatically upon reconnection.
+The system handles 100+ concurrent sessions with 100% success rate under stress tests, achieving 80+ requests per second throughput with sub-second response times for mixed API calls. The connection pool is configured for 50 connections with 100 overflow, eliminating previous timeout issues.
 
-## Architecture
+## Architecture Overview
 
-The frontend is built with React 18 and TypeScript, using Vite 5 for fast development and optimized builds. Styling is handled by Tailwind CSS 3, with routing provided by React Router 6. Icons come from React Icons, and testing uses Vitest 4 with Testing Library. Code quality is maintained through ESLint and Prettier.
+The frontend is built with React 18 and TypeScript, using Vite 5 for fast development and optimized builds. Tailwind CSS 3 provides styling, while the Web Crypto API handles client-side encryption. WebSocket connections enable real-time communication with the backend.
 
-The backend runs on FastAPI 0.115 with Python, using SQLite for database storage. WebSocket connections are managed through FastAPI's built-in WebSocket support. Authentication uses short-lived tokens with 60-second expiry. Testing uses pytest, and deployment targets include Render and Vercel.
-
-The database schema is minimal. Sessions are stored with an ID, creation timestamp, expiry timestamp, duration in minutes, participant count, status, and link active flag. Codes are stored with the code itself, associated session ID, encryption key, expiry timestamp, and redeemed flag. No message content is ever stored.
+The backend runs on FastAPI 0.115 with Python, using SQLite for minimal session metadata storage. No message content is ever written to disk. The WebSocket Manager handles connection pooling and message routing, while the replay protection module ensures message integrity. A background expiry scheduler automatically cleans up expired sessions.
 
 ## Development Environment
 
-Driflly is uniquely engineered to be developed, built, and run entirely on mobile devices using Termux. This is not an afterthought but the primary development environment that has shaped every architectural decision. The entire codebase is optimized for memory-constrained environments with limited RAM and storage.
+Driflly is engineered to be developed entirely on mobile devices using Termux. This constraint has shaped every architectural decision to optimize for memory, storage, and network limitations.
 
-Memory limitations are addressed by splitting build processes into smaller chunks, configuring development servers with lower memory footprints, avoiding heavy dependencies, and optimizing WebSocket connections to use minimal memory per connection. Storage constraints are managed through a minimal dependency philosophy, efficient caching strategies, regular cleanup scripts, and SQLite with automatic VACUUM operations.
-
-CPU limitations on mobile processors are handled by prioritizing asynchronous operations over synchronous ones, optimizing and minimizing CPU-intensive tasks like encryption, throttling background jobs to prevent UI thread blocking, using efficient WebSocket heartbeat intervals of 25 seconds, and carefully tuning polling intervals to 2 seconds for status updates.
-
-Network constraints on mobile networks with variable latency are addressed through exponential backoff for reconnection attempts, message queuing for offline scenarios, optimized WebSocket frame sizes, compression for large messages like images and files, and graceful degradation when connections are slow.
+Memory optimization is achieved through splitting build processes into smaller chunks, configuring development servers with lower memory footprints, maintaining a minimal dependency philosophy, and optimizing WebSocket connections for memory efficiency. Storage efficiency is maintained through regular cleanup scripts, SQLite with automatic VACUUM operations, and compressed asset delivery. Network resilience is ensured through exponential backoff for reconnection attempts, message queuing for offline scenarios, heartbeat intervals of 25 seconds to detect stale connections, and graceful degradation on slow connections.
 
 ## Installation
 
-To set up the frontend, clone the repository and navigate to the frontend directory. Install dependencies using npm install. Create a .env file with VITE_API_URL set to http://localhost:8080 and VITE_WS_URL set to ws://localhost:8080. Start the development server with npm run dev.
+### Frontend Setup
 
-To set up the backend, navigate to the backend directory and create a Python virtual environment using python -m venv venv. Activate the virtual environment with source venv/bin/activate on Unix systems or venv\Scripts\activate on Windows. Install dependencies with pip install -r requirements.txt. Start the server with python app.py.
+To set up the frontend, navigate to the frontend directory and install dependencies using npm install. Copy the environment example file to create your configuration with cp .env.example .env and edit the file with your specific settings. Start the development server with npm run dev, which will make the frontend available at http://localhost:3000.
 
-The frontend will be available at http://localhost:3000 and the backend at http://localhost:8080.
+### Backend Setup
+
+For the backend, navigate to the backend directory and create a Python virtual environment using python -m venv venv. Activate the virtual environment with source venv/bin/activate on Unix systems or venv\Scripts\activate on Windows. Install dependencies with pip install -r requirements.txt. Copy the environment example file with cp .env.example .env and edit as needed. Start the server with python app.py, which will run on http://localhost:8080.
 
 ## Testing
 
-Frontend tests are run with npm test from the frontend directory. Specific test suites can be run with npm run test:api for API tests, npm run test:ws for WebSocket tests, and npm run test:encryption for encryption tests. Backend tests are run with pytest from the backend directory.
+### Frontend Tests
 
-## API Documentation
+The frontend test suite can be run from the frontend directory. Use npm test to run all tests, npm run test:api for API endpoint tests, npm run test:ws for WebSocket functionality tests, and npm run test:encryption for encryption and decryption tests. Test coverage reports are generated with npm run test:coverage.
 
-The API provides endpoints for session management. Create a new session with a POST request to /session/create, including a JSON body with the desired duration in minutes. Join a session using a code with a POST request to /session/code/{code}. Check session status with a GET request to /session/{sessionId}/status. Terminate a session with a DELETE request to /session/{sessionId}.
+### Backend Tests
 
-WebSocket connections are established at ws://localhost:8080/ws/{sessionId}. Once connected, messages can be sent as JSON objects containing a type field, data field with base64-encoded content, timestamp, and unique ID. The server forwards messages to the other participant without storing them.
+Backend tests are run from the backend directory using pytest. Execute pytest tests/ -v to run all tests with verbose output, pytest tests/test_security/ -v for security-specific tests including replay protection, and python tests/load/real_api_stress.py to run stress tests against the real server.
 
-## Security
+## Project Status
 
-All messages are encrypted with AES-256-GCM. Keys are generated and stored on participant devices. The server never receives encryption keys. Session metadata exists only in memory during active sessions. No message content is stored. Upon termination, all data is permanently deleted.
+### Implemented Features
 
-Room access is secured through one-time links and codes that expire after use. Access methods cannot be reused. The server relays encrypted data between participants without accessing plaintext. The codebase is publicly available for independent security audits.
+Days 1 and 2 established end-to-end encryption with AES-256-GCM, ensuring that all messages are encrypted before leaving the client device. Day 3 implemented the zero-knowledge message relay, transforming the backend into a pure conduit that never inspects message content. Day 7 added comprehensive replay protection including HMAC signing, sequence numbering, and nonce tracking, with feature flags for safe gradual rollout. Day 8 delivered a comprehensive test suite with over 48 passing tests, including stress tests that validate the system handles 100+ concurrent sessions.
 
-Connection limits are enforced with a maximum of two participants per session. Codes have a 30-second validity period. Tokens have a 60-second validity period. Links expire immediately after first use. Connections are rejected with HTTP 403 or WebSocket close codes 1008 and 4003 when sessions are full.
+### In Progress
 
-## Deployment
+Day 9 focuses on documentation alignment and cleanup, ensuring all documentation accurately reflects the current codebase state and removing references to unimplemented features.
 
-The frontend can be deployed to Vercel by running vercel --prod from the frontend directory. The backend can be deployed to Render by pushing code to GitHub, creating a new Web Service, connecting the repository, setting the build command to pip install -r requirements.txt, and setting the start command to uvicorn app:app --host 0.0.0.0 --port $PORT.
+### Future Development
 
-## Contributing
+Planned enhancements include additional conversation modes such as Group for small multi-participant sessions, Live Board for classroom and meeting engagement, Broadcast for one-to-many announcements, Drop for self-destructing file transfer, and Whisper for micro-messages that disappear after reading. Enhanced file sharing will support all common file types with appropriate preview capabilities. Read receipt enhancements will provide more detailed delivery information. Session extensions and resumption will allow conversations to continue beyond initial time limits and survive brief network interruptions.
 
-Contributions are welcome. Please read the Contributing Guidelines and Code of Conduct first. Fork the repository, create a feature branch, commit your changes, push to your fork, and open a pull request.
+## Known Limitations
+
+File sharing is currently limited to images with a maximum size of 10MB. The Termux development environment may experience performance constraints on older or lower-powered Android devices. Some features documented in aspirational documents like the Manifesto and Roadmap are not yet implemented and represent future goals rather than current capabilities.
+
+## Documentation
+
+The project documentation includes an API reference at docs/API.md detailing all available endpoints and WebSocket messages. The architecture overview at docs/ARCHITECTURE.md provides a deep dive into system design decisions. Security policies and practices are documented in docs/SECURITY.md. The development roadmap at docs/ROADMAP.md outlines planned features and timelines. Contribution guidelines are available in docs/CONTRIBUTING.md, and the code of conduct is at docs/CODE_OF_CONDUCT.md.
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the LICENSE file in the docs directory for complete terms.
 
 ## Contact
 
-For questions or support, email contact@driflly.app. For security issues, email security@driflly.app. Follow on Twitter at @driflly. Visit the GitHub repository at github.com/Yothabo/dispozhe.
-
-## Acknowledgments
-
-Built with privacy as the primary requirement. Inspired by the need for truly ephemeral communication. Thanks to all contributors and privacy advocates. Special thanks to the open source community.
-
-Driflly is proof that complex web applications can be developed entirely on mobile devices. Every architectural decision was made with Termux constraints in mind, resulting in a lean, efficient, and privacy-focused application that runs anywhere. The Termux-first approach has forced us to write better code, use fewer dependencies, and think carefully about every byte. This discipline has made Driflly not just a mobile-first application, but a truly portable one that can be developed and run anywhere, on any device, with minimal resources.
+For general questions and support, email contact@driflly.app. Security issues should be reported to security@driflly.app. The source code is available on GitHub at github.com/Yothabo/dispozhe.

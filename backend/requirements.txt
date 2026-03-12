@@ -6,3 +6,8 @@ python-multipart==0.0.6
 sqlalchemy==2.0.23
 python-dotenv==1.0.0
 stream-chat==4.1.0
+# Security dependencies
+cryptography==41.0.7
+python-multipart==0.0.6
+# Crypto for backend testing
+cryptography==41.0.7

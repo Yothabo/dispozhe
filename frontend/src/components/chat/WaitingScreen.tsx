@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react'
-import { FaSpinner, FaTrash, FaArrowLeft } from 'react-icons/fa'
-
-import { preventChatReload } from '../../utils/preventReload'
-import { useNavigationGuard } from '../../hooks/useNavigationGuard'
-import HowToConnect from './howto/HowToConnect'
-import ShareableLinkCard from './cards/ShareableLinkCard'
-import QRModal from '../modals/QRModal'
-import CodeModal from '../modals/CodeModal'
-import TerminateSessionModal from '../modals/TerminateSessionModal'
+import React, { useState, useEffect } from 'react';
+import { FaSpinner, FaTrash, FaArrowLeft } from 'react-icons/fa';
+import { preventChatReload } from '../../utils/preventReload';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
+import HowToConnect from './howto/HowToConnect';
+import ShareableLinkCard from './cards/ShareableLinkCard';
+import QRModal from '../modals/QRModal';
+import CodeModal from '../modals/CodeModal';
+import TerminateSessionModal from '../modals/TerminateSessionModal';
 
 interface WaitingScreenProps {
-  link: string
-  _duration: number
-  _sessionId: string
-  code?: string
-  onCopy: () => void
-  onCopyCode?: () => void
-  onTerminate: () => void
+  link: string;
+  _duration: number;
+  _sessionId: string;
+  code?: string;
+  onCopy: () => void;
+  onCopyCode?: () => void;
+  onTerminate: () => void;
 }
 
 const WaitingScreen: React.FC<WaitingScreenProps> = ({
@@ -29,7 +28,6 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
   const [showQRModal, setShowQRModal] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showTerminateModal, setShowTerminateModal] = useState(false);
-  const [_isDestroyed, setIsDestroyed] = useState(false);
   const [itemStates, setItemStates] = useState([
     { id: 1, status: 'pending' },
     { id: 2, status: 'pending' },
@@ -62,7 +60,6 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({
             prev.map(i => i.id === item.id ? { ...i, status: 'completed' } : i)
           );
           if (index === items.length - 1) {
-            setIsDestroyed(true);
             setTimeout(() => {
               onTerminate();
             }, 1200);

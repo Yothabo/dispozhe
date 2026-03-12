@@ -36,36 +36,38 @@ export const useWebSocketConnection = ({
     if (connectionEstablished.current || isTerminating || terminationCompleted || showSecondUserTermination) {
       return;
     }
-
     connectionEstablished.current = true;
 
     const connect = async () => {
       try {
+        if (wsService.isConnected() && wsService.getSessionId() === sessionId) {
+          if (mountedRef.current) {
+            onConnected(true);
+          }
+          return;
+        }
         await wsService.connect(sessionId);
         if (mountedRef.current) {
           onConnected(true);
           reconnectAttemptRef.current = 0;
         }
-      } catch (err) {
-        console.error(`[${connectionId.current}] WebSocket connection failed:`, err);
+      } catch {
         connectionEstablished.current = false;
-
         if (mountedRef.current && !reconnectTimer.current) {
           reconnectAttemptRef.current++;
           if (onReconnecting) {
             onReconnecting(reconnectAttemptRef.current);
           }
-          
+          const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptRef.current - 1), 10000);
           reconnectTimer.current = setTimeout(() => {
             reconnectTimer.current = null;
             connectionEstablished.current = false;
-          }, 3000);
+            connect();
+          }, delay);
         }
       }
     };
-
     connect();
-
     return () => {
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);

@@ -1,5 +1,5 @@
 import React from 'react'
-import { FaFile, FaImage, FaFilePdf, FaFileWord, FaDownload } from 'react-icons/fa'
+import { FaFile, FaImage, FaFilePdf, FaFileWord, FaDownload, FaCheck, FaCheckDouble } from 'react-icons/fa'
 
 import { Message, FileMessage } from '../types'
 
@@ -38,6 +38,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onViewFile(message);
+    }
+  };
+
+  const getStatusIcon = () => {
+    if (!isMe) return null;
+    
+    switch (message.status) {
+      case 'sent':
+        return <FaCheck className="w-3 h-3 text-grey/50" />;
+      case 'delivered':
+        return <FaCheckDouble className="w-3 h-3 text-grey/70" />;
+      case 'read':
+        return <FaCheckDouble className="w-3 h-3 text-sky" />;
+      default:
+        return null;
     }
   };
 
@@ -95,11 +110,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onViewFile }) =>
         <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? 'justify-end' : 'justify-start'}`}>
           <span className="text-grey/50">{formatTime(message.timestamp)}</span>
           {isMe && (
-            <span className="text-sky/70">
-              {message.status === 'sending' && '⏳'}
-              {message.status === 'sent' && '✓'}
-              {message.status === 'delivered' && '✓✓'}
-              {message.status === 'read' && '✓✓'}
+            <span className="flex items-center">
+              {getStatusIcon()}
             </span>
           )}
         </div>

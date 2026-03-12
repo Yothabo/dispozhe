@@ -1,33 +1,23 @@
 import { useEffect, useRef } from 'react';
-import wsService from '../../../services/websocket';
+import wsService, { WebSocketMessage } from '../../../services/websocket';
 
 interface UseMessageHandlerProps {
-  isTerminating: boolean;
-  terminationCompleted: boolean;
-  showSecondUserTermination: boolean;
-  onMessage: (message: Record<string, unknown>) => void;
-  connectionId: React.MutableRefObject<string>;
+  onMessage: (message: WebSocketMessage) => void;
 }
 
-export const useMessageHandler = ({
-  isTerminating,
-  terminationCompleted,
-  showSecondUserTermination,
-  onMessage,
-  connectionId
-}: UseMessageHandlerProps) => {
-  const handlerRegistered = useRef<boolean>(false);
+export const useMessageHandler = ({ onMessage }: UseMessageHandlerProps) => {
+  const handlerRef = useRef(onMessage);
 
   useEffect(() => {
-    if (!handlerRegistered.current && !isTerminating && !terminationCompleted && !showSecondUserTermination) {
-      wsService.addMessageHandler(onMessage);
-      handlerRegistered.current = true;
-    }
-    return () => {
-      if (handlerRegistered.current) {
-        wsService.removeMessageHandler(onMessage);
-        handlerRegistered.current = false;
-      }
+    handlerRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    const handler = (data: WebSocketMessage) => {
+      handlerRef.current(data);
     };
-  }, [onMessage, isTerminating, terminationCompleted, showSecondUserTermination, connectionId]);
+
+    wsService.addMessageHandler(handler);
+    return () => wsService.removeMessageHandler(handler);
+  }, []);
 };

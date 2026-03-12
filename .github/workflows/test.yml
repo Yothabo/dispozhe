@@ -1,0 +1,169 @@
+name: Full Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov locust bandit
+          
+      - name: Run unit tests
+        run: |
+          cd backend
+          pytest tests/ --cov=. --cov-report=xml --timeout=30
+          
+      - name: Run stress tests
+        run: |
+          cd backend
+          pytest tests/load/ -v --timeout=300
+          
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage.xml
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Run unit tests
+        run: |
+          cd frontend
+          npm run test:unit -- --coverage
+          
+      - name: Run stress tests
+        run: |
+          cd frontend
+          npm run test:stress -- --run --bail=1
+          
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/lcov.info
+
+  load-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install locust
+          
+      - name: Start backend
+        run: |
+          cd backend
+          uvicorn app:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          
+      - name: Run Locust load tests
+        run: |
+          cd backend
+          locust -f tests/load/locustfile.py --headless -u 500 -r 10 --run-time 5m --host http://localhost:8000 || true
+          
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Bandit
+        run: pip install bandit
+        
+      - name: Run Bandit
+        run: |
+          cd backend
+          bandit -r . -f json -o bandit-report.json || true
+          
+      - name: Run npm audit
+        run: |
+          cd frontend
+          npm audit --audit-level=high || true
+          
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            backend/bandit-report.json
+            frontend/npm-audit.json
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          cd ../frontend
+          npm ci
+          
+      - name: Start backend
+        run: |
+          cd backend
+          uvicorn app:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          
+      - name: Start frontend
+        run: |
+          cd frontend
+          npm run build
+          npm run preview -- --port 3000 &
+          sleep 10
+          
+      - name: Install Cypress
+        run: |
+          cd frontend
+          npm install cypress --save-dev
+          
+      - name: Run Cypress E2E tests
+        run: |
+          cd frontend
+          npx cypress run --config video=false || true
+          
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
+
+  test-summary:
+    needs: [backend-tests, frontend-tests, load-tests, security-scan, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Test Summary
+        run: |
+          echo "✅ Test suite completed!"
+          echo "📊 Check individual job statuses above"

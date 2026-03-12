@@ -1,7 +1,12 @@
 import React from 'react';
 import { FaTrash } from 'react-icons/fa';
-import { TerminationStep } from '../../types';
 import TerminationSteps from '../TerminationSteps';
+
+interface TerminationStep {
+  id: number;
+  label: string;
+  status: 'pending' | 'loading' | 'completed';
+}
 
 interface DestroyingSessionViewProps {
   steps: TerminationStep[];

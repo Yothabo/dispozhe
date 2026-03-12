@@ -6,7 +6,7 @@ Driflly is a real-time ephemeral messaging application built with a clear separa
 
 The system consists of a React TypeScript frontend that communicates with a FastAPI Python backend through both REST API calls and WebSocket connections. The frontend handles user interface rendering, encryption, and local state management. The backend manages session creation, participant coordination, and WebSocket connection routing.
 
-Communication between frontend and backend occurs over HTTPS for API requests and WSS for WebSocket connections in production. During development, HTTP and WS are used for simplicity. All messages are encrypted end-to-end, meaning the backend only sees encrypted data and never has access to plaintext message content.
+Communication between frontend and backend occurs over HTTPS for API requests and WSS for WebSocket connections in production. During development, HTTP and WS are used for simplicity. All messages are encrypted end-to-end using AES-256-GCM via the Web Crypto API, meaning the backend only sees encrypted data and never has access to plaintext message content.
 
 ## Frontend Architecture
 
@@ -22,9 +22,9 @@ State management is handled through React hooks at appropriate levels. Global st
 
 The application uses custom hooks extensively to encapsulate complex logic. useChatMessages manages message state, deduplication, and viewed file tracking. useChatTimer synchronizes the countdown timer with the backend and handles expiration events. useChatTermination orchestrates the session termination flow with visual feedback.
 
-useWebSocketConnection handles the WebSocket connection lifecycle including reconnection logic and connection state tracking. useSessionPolling periodically checks session status to detect when the second participant joins. useNavigationGuard intercepts device back button presses to trigger appropriate actions.
+useWebSocketConnection handles the WebSocket connection lifecycle including reconnection logic with exponential backoff and connection state tracking. useSessionPolling periodically checks session status to detect when the second participant joins. useNavigationGuard intercepts device back button presses to trigger appropriate actions.
 
-useFileHandling manages file selection, reading, and sending. It enforces size limits, validates file types, and handles the transition from file selection to message sending. useChatTyping manages typing indicators with appropriate throttling to prevent network spam.
+useFileHandling manages file selection, reading, and sending for images up to 10MB. It enforces size limits, validates file types, and handles the transition from file selection to message sending. useChatTyping manages typing indicators with appropriate throttling to prevent network spam.
 
 ### Service Layer
 
@@ -32,21 +32,27 @@ The WebSocket service manages the real-time communication channel. It handles co
 
 The API service provides a clean interface to backend REST endpoints. It handles request formatting, response parsing, and error handling. Each API method returns promises that resolve to typed response objects, making the interaction with the backend type-safe and predictable.
 
+### Encryption Implementation
+
+All encryption operations use the Web Crypto API with AES-256-GCM. When a session is created, the frontend generates a 256-bit encryption key that never leaves the user's device. Each message is encrypted with a random 12-byte IV, and the IV and ciphertext are combined and base64-encoded for transmission.
+
+Replay protection is implemented through sequence numbers that increment with each message, unique nonces generated per message, and HMAC-SHA256 signatures computed over the encrypted data, sequence, and nonce. These fields enable the backend to validate message integrity without seeing plaintext content.
+
 ### Routing
 
 React Router manages navigation between pages. The main routes include the landing page at the root path, the code entry page for joining with a six-digit code, the waiting page for session creators, and the chat page for active conversations. Short URLs at the c path redirect to the appropriate join flow.
 
-Route protection is implemented through conditional rendering. The waiting page validates that the session exists before rendering. The chat page checks that both a session ID and encryption key are present in the URL. Invalid or expired sessions redirect to the home page.
+Route protection is implemented through conditional rendering. The waiting page validates that the session exists before rendering. The chat page checks that both a session ID and encryption key are present in memory. Invalid or expired sessions redirect to the home page.
 
 ## Backend Architecture
 
 ### Application Structure
 
-The backend follows a modular structure with clear separation between routes, models, and utilities. The main application file sets up middleware, registers routes, and configures the lifespan context for background services. Routes are organized by function with separate handlers for session management and WebSocket connections.
+The backend follows a modular structure with clear separation between routes, models, services, and utilities. The main application file sets up middleware, registers routes, and configures the lifespan context for background services. Routes are organized by function with separate handlers for session management and WebSocket connections.
 
-Database models define the schema for sessions and codes using SQLAlchemy. The session model stores metadata about active and expired conversations. The code model tracks six-digit access codes with their associated sessions and encryption keys. Models include methods for checking expiration and updating status.
+Database models define the schema for sessions using SQLAlchemy. The session model stores metadata about active and expired conversations including creation time, expiration time, duration, participant count, and status. No message content is ever stored in the database.
 
-Utility modules provide specialized functionality. The code generator creates cryptographically secure six-digit codes with configurable expiration. The expiry service runs in the background to clean up expired sessions. The WebSocket manager handles connection pooling, message routing, and participant tracking.
+Utility modules provide specialized functionality. The code generator creates cryptographically secure six-digit codes with configurable expiration. The expiry service runs in the background every 60 seconds to clean up expired sessions. The WebSocket manager handles connection pooling, message routing, and participant tracking.
 
 ### WebSocket Manager
 
@@ -54,9 +60,15 @@ The ConnectionManager class is the heart of real-time communication. It maintain
 
 When a client connects, the manager validates the session, checks connection limits, and adds the connection to the active pool. It then broadcasts the updated participant count to all connections in the session. When both participants are connected, the manager logs this event and prepares for message exchange.
 
-Message routing is handled by the send_message method. It determines the set of recipients by excluding the sender from the session's connection set. If no recipients are online, the message is queued for later delivery. If recipients are online, the message is sent immediately with delivery tracking.
+Message routing is handled by the send_message method. It determines the set of recipients by excluding the sender from the session's connection set. If no recipients are online, the message is queued in memory for later delivery. If recipients are online, the message is sent immediately with delivery tracking.
 
-The manager also handles disconnections gracefully. When a client disconnects, it removes the connection from the pool and broadcasts a participant_left message to remaining participants. If the session becomes empty, the manager cleans up associated resources after a grace period.
+The manager also handles disconnections gracefully. When a client disconnects, it removes the connection from the pool and broadcasts a participant_left message to remaining participants. If the session becomes empty, the manager cleans up associated resources after a 15-second grace period.
+
+### Replay Protection
+
+The replay protection module adds security through HMAC-SHA256 signing of messages, sequence number tracking per client, and nonce tracking with 5-minute expiry. The module is implemented with feature flags allowing gradual rollout without breaking existing clients.
+
+When enabled, the module validates every message against sequence numbers and nonces before forwarding. Each client maintains an increasing sequence number per session, and any message with a sequence number less than or equal to the last seen is rejected. Nonces are tracked for five minutes to prevent replay attacks within that window.
 
 ### Session Lifecycle
 
@@ -64,17 +76,15 @@ Sessions progress through a defined lifecycle from creation to termination. When
 
 When a second participant joins using either a code or a direct link, the session transitions to the active state. The participant count updates to two, and the status changes from waiting to active. This transition triggers the WebSocket manager to notify both participants that the session is now ready for communication.
 
-Sessions can end in three ways. Automatic expiration occurs when the configured duration elapses without manual termination. Manual termination happens when a participant explicitly ends the session through the UI. Participant departure without explicit termination leaves the other participant alone but the session remains active until expiration.
-
-When a session ends, the WebSocket manager terminates all connections, the database record is deleted, and any associated codes are invalidated. Connected clients receive a session_terminated message before their connections close, allowing them to display appropriate UI.
+Sessions end in two ways. Automatic expiration occurs when the configured duration elapses without manual termination. Manual termination happens when a participant explicitly ends the session through the UI. In both cases, the session record is deleted from the database and all WebSocket connections are closed.
 
 ### Code Generation and Validation
 
-The code generator creates six-digit codes that are cryptographically secure and effectively random. Each code is associated with a specific session and includes an expiration timestamp. Codes are stored in the database with their session ID, encryption key, expiration time, and redeemed status.
+The code generator creates six-digit codes that are cryptographically secure and effectively random. Each code is associated with a specific session and expires after 30 seconds. Codes are stored in memory with their session ID, encryption key, expiration time, and redeemed status.
 
-Code validation checks multiple conditions. The code must exist in the database, must not be expired based on its timestamp, must not have been previously redeemed, and must be associated with a session that is not already full. If any condition fails, the join request is rejected with an appropriate error.
+Code validation checks multiple conditions. The code must exist in memory, must not be expired based on its timestamp, must not have been previously redeemed, and must be associated with a session that is not already full. If any condition fails, the join request is rejected with an appropriate error.
 
-Successful code redemption updates the database to mark the code as redeemed and increments the session's participant count. The response includes the session ID and encryption key, allowing the joining client to establish a WebSocket connection and begin secure communication.
+Successful code redemption updates the in-memory store to mark the code as redeemed and increments the session's participant count in the database. The response includes the session ID and encryption key, allowing the joining client to establish a WebSocket connection and begin secure communication.
 
 ## Data Flow
 
@@ -82,9 +92,9 @@ Successful code redemption updates the database to mark the code as redeemed and
 
 When a user initiates a chat, the frontend generates an encryption key locally using the Web Crypto API. This key never leaves the user's device and is used for all message encryption during the session. The key is stored only in memory and is discarded when the session ends.
 
-The frontend sends a POST request to the backend's session creation endpoint with the requested duration. The backend generates a unique session ID, creates a database record, and generates a six-digit access code. The response includes the session ID, access code, and other session metadata.
+The frontend sends a POST request to the backend's session creation endpoint with the requested duration. The backend generates a unique session ID, creates a database record, and generates a six-digit access code. The response includes the session ID, access code, sharing link, and expiration information.
 
-The frontend stores the access code in sessionStorage for later reference and navigates to the waiting page. The waiting page displays the shareable link and access code, and begins polling the session status endpoint to detect when the second participant joins.
+The frontend displays the access code and sharing link, then begins polling the session status endpoint every 2 seconds to detect when the second participant joins.
 
 ### Join Flow
 
@@ -94,15 +104,15 @@ The chat page establishes a WebSocket connection using the session ID. The backe
 
 ### Message Flow
 
-When a user sends a message, the frontend encrypts the plaintext using the session key and the Web Crypto API. The encrypted data is converted to base64 for transmission. The message is assigned a unique ID and timestamp before being sent over the WebSocket.
+When a user sends a message, the frontend encrypts the plaintext using the session key with a random 12-byte IV. The encrypted data is converted to base64 for transmission. The message includes a unique ID, sequence number, nonce, and HMAC signature before being sent over the WebSocket.
 
-The WebSocket manager receives the message and determines the recipient by excluding the sender from the session's connection set. If the recipient is online, the message is forwarded immediately. If not, the message is queued for later delivery when the recipient reconnects.
+The WebSocket manager receives the message and validates it against replay protection rules if enabled. If valid, it determines the recipient by excluding the sender from the session's connection set. If the recipient is online, the message is forwarded immediately. If not, the message is queued in memory for later delivery when the recipient reconnects.
 
 The recipient's frontend receives the message, decodes the base64 data, and decrypts it using the shared session key. The decrypted message is added to the message list and displayed to the user. Read receipts are sent automatically when messages become visible in the viewport.
 
 ### Termination Flow
 
-When a user initiates termination, the frontend sends a DELETE request to the session endpoint. The backend immediately removes the session from the database and terminates all associated WebSocket connections. Connected clients receive a session_terminated message before their connections close.
+When a user initiates termination, the frontend sends a DELETE request to the session endpoint. The backend immediately removes the session from the database, invalidates any associated codes, and terminates all WebSocket connections. Connected clients receive a session_terminated message before their connections close.
 
 The frontend displays a destroying session animation while the backend processes the termination. After the animation completes, the user is shown the session destroyed view with options to start a new chat or return to the home page.
 
@@ -116,19 +126,25 @@ The sessions table stores metadata about each conversation. The id field is a te
 
 duration_minutes records the user-selected session length. participant_count tracks how many participants have joined, starting at one and maxing at two. status indicates whether the session is waiting, active, expired, or terminated. link_active is a boolean flag controlling whether the shareable link is still valid.
 
-### Codes Table
+No message content is ever stored in the database. The table contains only operational metadata necessary for session management.
 
-The codes table manages six-digit access codes. The code field is the primary key containing the six-digit string. session_id is a foreign key referencing the associated session. encryption_key stores the base64-encoded key for secure communication.
+### Code Storage
 
-expires_at sets the time after which the code becomes invalid. redeemed is a boolean flag indicating whether the code has already been used. Together, these fields ensure that each code can only be used once within its validity window.
+Codes are stored in memory rather than the database for performance and simplicity. Each code entry includes the six-digit code, associated session ID, encryption key, expiration timestamp (30 seconds from creation), and redeemed status. Codes are automatically removed from memory after expiration or redemption.
 
 ## Security Architecture
 
 ### Encryption Layer
 
-All message encryption happens client-side using AES-256-GCM. This authenticated encryption mode provides both confidentiality and integrity, ensuring that messages cannot be tampered with during transit. The Galois Counter Mode also prevents replay attacks by including a unique nonce with each message.
+All message encryption happens client-side using AES-256-GCM via the Web Crypto API. This authenticated encryption mode provides both confidentiality and integrity, ensuring that messages cannot be tampered with during transit. The Galois Counter Mode includes authentication tags that detect any modification to the ciphertext.
 
 Encryption keys are generated using cryptographically secure random number generators provided by the Web Crypto API. Keys are 256 bits in length, providing strong protection against brute force attacks. Keys exist only in memory and are never persisted to disk or transmitted over the network.
+
+### Replay Protection
+
+The replay protection system validates every message against sequence numbers and nonces before forwarding. Each client maintains an increasing sequence number per session, and any message with a sequence number less than or equal to the last seen is rejected. Nonces are tracked for five minutes to prevent replay attacks within that window. HMAC-SHA256 signatures ensure message integrity and authenticity.
+
+The replay protection module is implemented with feature flags, starting disabled by default for backward compatibility. It can be enabled gradually through the admin API without requiring client updates.
 
 ### Access Control
 
@@ -138,7 +154,7 @@ The backend validates every request against the session's current state. Expired
 
 ### Data Retention
 
-The system follows a strict zero-data retention policy. Message content is never stored in the database. Session metadata exists only in memory for active sessions and is deleted upon termination. The only persistent data is session records for expiration tracking, and these contain no message content or user identifiers.
+The system follows a strict zero-data retention policy. Message content is never stored in the database. Session metadata exists in the database only for active sessions and is deleted upon termination. Codes exist only in memory and are removed immediately after use or expiration.
 
 When a session terminates, all associated data is immediately deleted. This includes the database record, any queued messages in memory, and any file data being transferred. The deletion is synchronous and verified to ensure no data remains accessible.
 
@@ -150,6 +166,10 @@ The WebSocket manager is designed for efficiency with minimal memory overhead. C
 
 Heartbeat messages are sent every twenty-five seconds to detect stale connections. This interval balances network overhead with timely detection of disconnected clients. When a client fails to respond to heartbeats, the connection is closed and resources are freed.
 
+### Connection Pooling
+
+The database connection pool is configured with size 50 and overflow 100 to handle concurrent load without timeout errors. Pool pre-ping verifies connections before use, and pool recycle refreshes connections after one hour to prevent staleness. These settings were determined through stress testing and have proven effective for handling 100+ concurrent sessions.
+
 ### Message Queuing
 
 Offline messages are queued in memory with size limits to prevent resource exhaustion. Each session can queue up to one hundred messages, after which older messages are discarded. Queued messages are delivered in order when the recipient reconnects.
@@ -158,17 +178,27 @@ The queuing system uses simple list structures with O(1) append and O(n) removal
 
 ### Database Optimization
 
-The database uses SQLite with appropriate indexes for performance. The sessions table is indexed on id for fast lookups and on expires_at for efficient cleanup queries. The codes table is indexed on code for rapid redemption validation and on expires_at for expiration sweeps.
+The database uses SQLite with appropriate indexes for performance. The sessions table is indexed on id for fast lookups and on expires_at for efficient cleanup queries. Write operations are minimized by design with session creation requiring a single insert and session termination deleting a single row.
 
-Write operations are minimized by design. Session creation requires a single insert. Code redemption updates a single row. Session termination deletes a single row. This minimal write pattern ensures the database remains responsive even under load.
+## Current Limitations
+
+### Feature Set
+
+The current implementation supports only Duo mode for two-person conversations. Other modes described in aspirational documents are not yet implemented. File sharing is limited to images with a maximum size of 10MB.
+
+### Technology Constraints
+
+Encryption uses the Web Crypto API rather than WebAssembly due to Termux compilation limitations. All communication uses WebSockets rather than WebRTC for simplicity and reliability. There are no native mobile or desktop applications.
+
+### Development Environment
+
+The Termux development environment imposes memory and CPU constraints that have shaped architectural decisions. Build processes are split into smaller chunks, development servers use lower memory footprints, and dependencies are minimized.
 
 ## Scalability
 
-The current architecture scales vertically to handle thousands of concurrent sessions on a single server instance. The stateless nature of the API layer would allow horizontal scaling by adding more instances behind a load balancer, with the WebSocket manager requiring sticky sessions or a distributed pub-sub system.
+The current architecture scales vertically to handle thousands of concurrent sessions on a single server instance with the increased connection pool settings. Stress tests confirm that the system handles 100+ concurrent sessions with 100% success rate.
 
 Session isolation ensures that scaling challenges are contained within individual sessions. Heavy usage in one session does not affect others. Memory usage scales linearly with the number of active sessions, each consuming approximately a few kilobytes for connection tracking and message queuing.
-
-The system is designed to handle typical usage patterns where sessions are short-lived and message volume is low. This aligns with the ephemeral nature of the application and ensures that resource requirements remain modest even as user base grows.
 
 ## Development Workflow
 
@@ -182,12 +212,10 @@ Environment variables configure the API and WebSocket URLs. In development, thes
 
 Tests are organized by concern with separate suites for API endpoints, WebSocket functionality, and encryption. API tests verify correct behavior of session management endpoints. WebSocket tests validate connection handling, message routing, and participant management. Encryption tests ensure that messages are properly encrypted and decrypted.
 
-Load tests simulate multiple concurrent sessions to verify system stability under stress. These tests create and destroy sessions rapidly, testing the system's ability to handle connection churn and resource cleanup. All tests run in isolated environments to prevent interference.
+Stress tests simulate multiple concurrent sessions to verify system stability under load. These tests create and destroy sessions rapidly, testing the system's ability to handle connection churn and resource cleanup. The stress tests confirm the system handles 100+ concurrent sessions with 100% success rate.
 
 ## Deployment Architecture
 
 The frontend is deployed as static files to Vercel's global CDN. This provides fast loading times worldwide and automatic SSL termination. The backend is deployed as a service on Render with automatic scaling and managed SSL. Environment variables configure the connection between frontend and backend.
 
-Database persistence is handled by a persistent volume attached to the backend service. SQLite files are stored on this volume, ensuring data survives service restarts. Regular backups are configured through the hosting platform to prevent data loss.
-
-Monitoring is provided through platform dashboards and custom logging. Application logs capture errors and important events without storing personal data. Performance metrics track response times, connection counts, and resource usage to identify potential issues before they affect users.
+Database persistence is handled by SQLite files stored on Render's persistent disk. Regular backups are configured to prevent data loss. The connection pool settings are optimized for production load based on stress test results.

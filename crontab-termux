@@ -1,0 +1,5 @@
+# Backup daily at 2 AM
+0 2 * * * cd ~/chatie && ./backup-termux.sh >> ~/chatie/backup.log 2>&1
+
+# Monitor every 30 minutes
+*/30 * * * * cd ~/chatie && ./monitor-termux.sh >> ~/chatie/monitor.log 2>&1

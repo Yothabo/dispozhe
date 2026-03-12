@@ -1,192 +1,323 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import useKeyboard from '../../hooks/useKeyboard';
-import wsService from '../../services/websocket';
+import wsService, { WebSocketMessage } from '../../services/websocket';
+import api from '../../services/api';
+import { useChatMessages } from './hooks/useChatMessages';
+import { useMessageHandler } from './hooks/useMessageHandler';
 import { preventRefresh, disableRefreshKeys, setTerminatingState } from '../../utils/preventRefresh';
 import { notifyManagement } from '../NotificationCenter';
-import { useChatMessages, useChatTermination, useChatBackNavigation, useFileHandling, useChatTyping } from './hooks';
-import { useChatTimer } from './hooks/useChatTimer';
-import { useChatMessageHandlers } from './hooks/useChatMessageHandlers';
-import { useWebSocketConnection } from './hooks/useWebSocketConnection';
-import { useSessionPolling } from './hooks/useSessionPolling';
-import { useMessageHandler } from './hooks/useMessageHandler';
-import { useNavigationGuard } from '../../hooks/useNavigationGuard';
-import { useSessionValidation } from '../../hooks/useSessionValidation';
-
+import { EncryptionProvider, useEncryption } from '../../contexts/WebSocketContext';
 import ChatHeader from './header/ChatHeader';
+import MessageContainer from './messages/MessageContainer';
 import AttachmentMenu from './file/AttachmentMenu';
 import FileViewer from './file/FileViewer';
-import MessageContainer from './messages/MessageContainer';
 import TerminationActions from './termination/TerminationActions';
 import TerminationModal from './termination/TerminationModal';
 import DestroyingSessionView from './termination/views/DestroyingSessionView';
 import SessionDestroyedView from './termination/views/SessionDestroyedView';
+import { FileMessage } from './types';
+
+type TerminationStep = {
+  id: number;
+  label: string;
+  status: 'pending' | 'loading' | 'completed';
+};
 
 interface ActiveChatProps {
   sessionId: string;
   duration: number;
-  _encryptionKey?: string;
+  encryptionKey?: string;
   onTerminate: () => void;
 }
 
-const ActiveChat: React.FC<ActiveChatProps> = ({
+interface ActiveChatContentProps extends ActiveChatProps {
+  onDecryptedHandlerRegister: (handler: (id: string, text: string, timestamp: number) => void) => void;
+}
+
+const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
   sessionId,
   duration,
-  onTerminate
+  onTerminate: _onTerminate,
+  onDecryptedHandlerRegister
 }) => {
   const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-  const [isSendingFile, setIsSendingFile] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [_isTerminatingProcess, setIsTerminatingProcess] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [terminationCompleted, setTerminationCompleted] = useState(false);
+  const [showSecondUserTermination, setShowSecondUserTermination] = useState(false);
+  const [otherUserLeft, setOtherUserLeft] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileMessage | null>(null);
+  const [timeLeft, setTimeLeft] = useState(duration * 60);
+  const [timeUp, setTimeUp] = useState(false);
+  const [terminationSteps, setTerminationSteps] = useState<TerminationStep[]>([
+    { id: 1, label: 'Destroy session link', status: 'pending' },
+    { id: 2, label: 'Wipe encryption keys from memory', status: 'pending' },
+    { id: 3, label: 'Clear session data from server', status: 'pending' },
+    { id: 4, label: 'Close encrypted tunnel', status: 'pending' },
+    { id: 5, label: 'Purge all traces from database', status: 'pending' }
+  ]);
 
+  const [secondUserSteps, setSecondUserSteps] = useState<TerminationStep[]>([
+    { id: 1, label: 'Session terminated by other user', status: 'pending' },
+    { id: 2, label: 'Encryption keys destroyed', status: 'pending' },
+    { id: 3, label: 'Session data cleared from server', status: 'pending' },
+    { id: 4, label: 'Encrypted tunnel closed', status: 'pending' },
+    { id: 5, label: 'All traces purged', status: 'pending' }
+  ]);
+
+  const sessionEnded = useRef(false);
+  const mountedRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const mountedRef = useRef(true);
-  const connectionId = useRef<string>(`conn-${Date.now()}-${Math.random()}`);
-  const sessionEnded = useRef<boolean>(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef(0);
+  const connectionAttempted = useRef(false);
+  const lastExtendedMinutes = useRef<number | null>(null);
 
-  const keyboardHeight = useKeyboard();
+  const { messages, otherUserTyping, setOtherUserTyping, addMessage, updateMessageStatus } = useChatMessages(sessionId);
+  const { sendEncrypted, isReady } = useEncryption();
 
-  const { checking: sessionChecking } = useSessionValidation({
-    sessionId,
-    redirectTo: '/'
-  });
-
-  const {
-    messages,
-    setMessages,
-    addMessage,
-    updateMessage,
-    processedIds,
-    viewedFiles
-  } = useChatMessages(sessionId);
-
-  const {
-    otherUserTyping,
-    typingTimeoutRef,
-    sendTyping,
-    handleTyping,
-    handleTypingIndicator
-  } = useChatTyping();
-
-  const {
-    timeLeft,
-    formatTime,
-    timeUp,
-    stopTimer
-  } = useChatTimer({
-    sessionId,
-    initialDuration: duration,
-    isConnected,
-    onTimeUp: () => {
-      if (sessionEnded.current) return;
-      sessionEnded.current = true;
-
-      addMessage({
-        id: `system-timeup-${Date.now()}`,
-        text: 'Session time has expired',
-        sender: 'system',
-        timestamp: Date.now()
-      });
+  const handleExtend = useCallback(async (minutes: number) => {
+    try {
+      await api.extendSession(sessionId, minutes);
+      setTimeLeft(prev => prev + (minutes * 60));
+      lastExtendedMinutes.current = minutes;
+      notifyManagement(`Session extended by ${minutes} minutes`, 'success');
+    } catch {
+      notifyManagement('Failed to extend session', 'error');
     }
-  });
-
-  const {
-    showTerminateModal,
-    setShowTerminateModal,
-    isTerminating,
-    terminationCompleted,
-    otherUserLeft,
-    setOtherUserLeft,
-    showSecondUserTermination,
-    secondUserSteps,
-    terminationSteps,
-    handleInitiatorTerminate,
-    handleSecondUserTerminate,
-  } = useChatTermination(sessionId, onTerminate, stopTimer);
-
-  const {
-    previewFile,
-    setPreviewFile,
-    handleFileSelect,
-    handleViewFile,
-    handleFileViewed,
-    isSendingFile: isUploading
-  } = useFileHandling(
-    addMessage,
-    setMessages,
-    viewedFiles,
-    mountedRef,
-    setIsSendingFile,
-    () => setShowAttachmentMenu(false)
-  );
-
-  useChatBackNavigation(setShowTerminateModal, terminationCompleted);
-
-  useNavigationGuard({
-    isActive: !terminationCompleted && !showSecondUserTermination && !isTerminating,
-    onBack: () => {
-      if (!isTerminating && !otherUserLeft && !showSecondUserTermination) {
-        handleInitiatorTerminate();
-      }
-    }
-  });
-
-  const { handleMessage } = useChatMessageHandlers(
-    addMessage,
-    updateMessage,
-    setMessages,
-    processedIds,
-    viewedFiles,
-    setOtherUserLeft,
-    () => {},
-    handleTypingIndicator
-  );
-
-  useWebSocketConnection({
-    sessionId,
-    isTerminating,
-    terminationCompleted,
-    showSecondUserTermination,
-    onConnected: setIsConnected,
-    connectionId
-  });
-
-  // Use session polling but prevent duplicate expiry
-  useSessionPolling({
-    sessionId,
-    terminationCompleted,
-    showSecondUserTermination,
-    onStatusUpdate: () => {},
-    onSessionExpired: () => {
-      // Expiry is now handled by useChatTimer only
-      // This prevents duplicate messages
-    },
-    connectionId
-  });
-
-  useMessageHandler({
-    isTerminating,
-    terminationCompleted,
-    showSecondUserTermination,
-    onMessage: handleMessage as (message: Record<string, unknown>) => void,
-    connectionId
-  });
+  }, [sessionId]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const connected = wsService.isConnected();
-      if (connected !== isConnected) {
-        setIsConnected(connected);
+    const handleTimeUpdate = (message: WebSocketMessage) => {
+      if (message.type === 'time_update' && typeof message.time_left === 'number') {
+        const oldTime = timeLeft;
+        const newTime = message.time_left;
+        setTimeLeft(newTime);
+        const timeAdded = newTime - oldTime;
+        if (timeAdded > 0 && timeAdded < 3600) {
+          const minutesAdded = Math.round(timeAdded / 60);
+          addMessage({
+            id: `system-extend-${Date.now()}`,
+            text: `${minutesAdded} minute${minutesAdded > 1 ? 's' : ''} added to session`,
+            sender: 'system',
+            timestamp: Date.now(),
+            status: 'delivered'
+          });
+        }
       }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isConnected]);
+    };
+
+    wsService.addMessageHandler(handleTimeUpdate);
+    return () => wsService.removeMessageHandler(handleTimeUpdate);
+  }, [timeLeft, addMessage]);
+
+  useEffect(() => {
+    const handleDecrypted = (id: string, text: string, timestamp: number) => {
+      addMessage({
+        id,
+        text,
+        sender: 'them',
+        timestamp,
+        status: 'delivered'
+      });
+      wsService.sendMessage({
+        type: 'read',
+        messageId: id,
+        timestamp: Date.now()
+      });
+    };
+    onDecryptedHandlerRegister(handleDecrypted);
+  }, [onDecryptedHandlerRegister, addMessage]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setTimeUp(true);
+          sessionEnded.current = true;
+          addMessage({
+            id: `system-timeup-${Date.now()}`,
+            text: 'Session time has expired',
+            sender: 'system',
+            timestamp: Date.now(),
+            status: 'delivered'
+          });
+          wsService.disconnect();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [addMessage]);
+
+  useEffect(() => {
+    if (connectionAttempted.current) return;
+    connectionAttempted.current = true;
+
+    const connect = async () => {
+      try {
+        await wsService.connect(sessionId);
+        if (mountedRef.current) {
+          setIsConnected(true);
+          reconnectAttempts.current = 0;
+        }
+      } catch {
+        // Silently fail - will show connection status in UI
+      }
+    };
+    connect();
+  }, [sessionId]);
+
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    if (message.type === 'connected') {
+      setIsConnected(true);
+    } else if (message.type === 'both_connected') {
+      notifyManagement('Other participant joined', 'success');
+    } else if (message.type === 'participant_left') {
+      setOtherUserLeft(true);
+      setShowSecondUserTermination(true);
+      addMessage({
+        id: `system-${Date.now()}`,
+        text: 'The other participant has left the chat.',
+        sender: 'system',
+        timestamp: Date.now(),
+        status: 'delivered'
+      });
+      notifyManagement('Other participant left the chat', 'warning');
+    } else if (message.type === 'delivery_status' && message.message_id) {
+      updateMessageStatus(message.message_id as string, 'delivered');
+    } else if (message.type === 'read' && message.messageId) {
+      updateMessageStatus(message.messageId as string, 'read');
+    } else if (message.type === 'typing') {
+      setOtherUserTyping(message.isTyping as boolean);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (message.isTyping) {
+        typingTimeoutRef.current = setTimeout(() => {
+          setOtherUserTyping(false);
+        }, 3000);
+      }
+    } else if (message.type === 'session_terminated') {
+      sessionEnded.current = true;
+      wsService.disconnect();
+      setTerminationCompleted(true);
+    }
+  }, [addMessage, updateMessageStatus, setOtherUserTyping]);
+
+  useMessageHandler({ onMessage: handleMessage });
+
+  const handleSend = useCallback(async () => {
+    if (!inputText.trim() || !isConnected || otherUserLeft || timeUp || sessionEnded.current || !isReady) {
+      return;
+    }
+    const id = crypto.randomUUID();
+    const encrypted = await sendEncrypted(inputText);
+    if (encrypted) {
+      const message = {
+        type: 'message',
+        id,
+        data: encrypted.encrypted,
+        keyId: encrypted.keyId,
+        timestamp: Date.now()
+      };
+      addMessage({
+        id,
+        text: inputText,
+        sender: 'me',
+        timestamp: Date.now(),
+        status: 'sent'
+      });
+      wsService.sendMessage(message);
+      setInputText('');
+    }
+  }, [inputText, isConnected, otherUserLeft, timeUp, sessionEnded, isReady, sendEncrypted, addMessage]);
+
+  const handleTyping = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    if (!otherUserLeft && !timeUp && !sessionEnded.current && isConnected) {
+      wsService.sendMessage({
+        type: 'typing',
+        isTyping: true,
+        timestamp: Date.now()
+      });
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        wsService.sendMessage({
+          type: 'typing',
+          isTyping: false,
+          timestamp: Date.now()
+        });
+      }, 1000);
+    }
+  }, [otherUserLeft, timeUp, sessionEnded, isConnected]);
+
+  const handleTerminate = useCallback(async () => {
+    setIsTerminating(true);
+    setShowTerminateModal(false);
+    terminationSteps.forEach((item, index) => {
+      setTimeout(() => {
+        setTerminationSteps(prev =>
+          prev.map(i => i.id === item.id ? { ...i, status: 'loading' } : i)
+        );
+      }, index * 400);
+      setTimeout(() => {
+        setTerminationSteps(prev =>
+          prev.map(i => i.id === item.id ? { ...i, status: 'completed' } : i)
+        );
+      }, index * 400 + 400);
+    });
+    try {
+      await api.terminateSession(sessionId);
+      wsService.sendMessage({ type: 'participant_leaving', timestamp: Date.now() });
+      wsService.disconnect();
+      wsService.setTerminating();
+      setTerminatingState(true);
+      sessionEnded.current = true;
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setTerminationCompleted(true);
+          setIsTerminating(false);
+          notifyManagement('Session terminated successfully', 'success');
+        }
+      }, terminationSteps.length * 400 + 800);
+    } catch {
+      setIsTerminating(false);
+    }
+  }, [sessionId, terminationSteps]);
+
+  const handleSecondUserTerminate = useCallback(() => {
+    setShowSecondUserTermination(true);
+    secondUserSteps.forEach((item, index) => {
+      setTimeout(() => {
+        setSecondUserSteps(prev =>
+          prev.map(i => i.id === item.id ? { ...i, status: 'loading' } : i)
+        );
+      }, index * 400);
+      setTimeout(() => {
+        setSecondUserSteps(prev =>
+          prev.map(i => i.id === item.id ? { ...i, status: 'completed' } : i)
+        );
+      }, index * 400 + 400);
+    });
+    wsService.disconnect();
+    setTimeout(() => {
+      if (mountedRef.current) {
+        setTerminationCompleted(true);
+        setShowSecondUserTermination(false);
+        sessionStorage.removeItem(`Driflly_messages_${sessionId}`);
+      }
+    }, secondUserSteps.length * 400 + 800);
+  }, [secondUserSteps, sessionId]);
 
   useEffect(() => {
     if (!terminationCompleted && !showSecondUserTermination && !isTerminating) {
@@ -200,172 +331,96 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
   }, [terminationCompleted, showSecondUserTermination, isTerminating]);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
     if (messages.length === 0 || isTerminating || terminationCompleted || otherUserLeft || showSecondUserTermination) {
       return;
     }
-
     const timeout = setTimeout(() => {
       sessionStorage.setItem(`Driflly_messages_${sessionId}`, JSON.stringify(messages));
     }, 500);
-
     return () => clearTimeout(timeout);
   }, [messages, sessionId, isTerminating, terminationCompleted, otherUserLeft, showSecondUserTermination]);
 
   useEffect(() => {
     mountedRef.current = true;
-    const currentTypingTimeout = typingTimeoutRef.current;
     return () => {
       mountedRef.current = false;
-      if (currentTypingTimeout) {
-        clearTimeout(currentTypingTimeout);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [typingTimeoutRef]);
+  }, []);
 
-  useEffect(() => {
-    if (!messagesEndRef.current) return;
-    messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages]);
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  if (sessionChecking) {
+  if (!isConnected && !terminationCompleted && !isTerminating && !showSecondUserTermination) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-navy">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-sky border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-grey text-sm font-light">Validating session...</p>
+          <p className="text-grey text-sm font-light">Connecting to secure chat...</p>
         </div>
       </div>
     );
   }
 
-  const handleSend = () => {
-    if (!inputText.trim() || !isConnected || isTerminating || otherUserLeft || showSecondUserTermination || timeUp || sessionEnded.current) return;
-
-    const id = crypto.randomUUID();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(inputText);
-    const encrypted = btoa(String.fromCharCode(...new Uint8Array(data)));
-    const timestamp = Date.now();
-
-    addMessage({
-      id,
-      text: inputText,
-      sender: 'me',
-      timestamp,
-      status: 'sent'
-    });
-
-    setInputText('');
-    wsService.sendMessage({ type: 'message', data: encrypted, timestamp, id });
-    sendTyping(false);
-  };
-
-  const handleTypingWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (sessionEnded.current) return;
-    handleTyping(
-      e,
-      isTerminating,
-      otherUserLeft,
-      showSecondUserTermination,
-      timeUp,
-      setInputText
-    );
-  };
-
-  const handleTerminate = () => {
-    if (!isTerminating && !otherUserLeft && !showSecondUserTermination) {
-      setShowTerminateModal(true);
-    }
-  };
-
-  const confirmTerminate = () => {
-    setIsTerminatingProcess(true);
-    wsService.setTerminating();
-    setTerminatingState(true);
-    sessionEnded.current = true;
-    setTimeout(() => {
-      handleInitiatorTerminate();
-    }, 50);
-  };
-
-  const handleNewChat = () => {
-    navigate('/create');
-  };
-
-  const handleClose = () => {
-    navigate('/');
-  };
-
-  const handleDummyFileSelect = () => {
-    notifyManagement('This file type is not yet supported', 'info');
-  };
-
   if (isTerminating) return <DestroyingSessionView steps={terminationSteps} />;
   if (showSecondUserTermination) return <DestroyingSessionView steps={secondUserSteps} />;
-  if (terminationCompleted) return (
-    <SessionDestroyedView
-      _onNewChat={handleNewChat}
-      _onClose={handleClose}
-    />
-  );
+  if (terminationCompleted) {
+    return (
+      <SessionDestroyedView
+        onNewChat={() => navigate('/create')}
+        onClose={() => navigate('/')}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-navy flex flex-col">
-      <div className="h-[57px] flex-shrink-0">
-        <ChatHeader
-          isConnected={isConnected}
-          timeLeft={timeLeft}
-          formatTime={formatTime}
-          onTerminate={handleTerminate}
-          onExtend={() => {}}
-          isTerminated={otherUserLeft || timeUp || sessionEnded.current}
-        />
-      </div>
-
-      {!isConnected && !otherUserLeft && !timeUp && !sessionEnded.current && (
-        <div className="h-[41px] flex-shrink-0 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center justify-center">
-          <p className="text-yellow-400 text-xs">Establishing secure connection...</p>
-        </div>
-      )}
-
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-4"
-      >
+      <ChatHeader
+        isConnected={isConnected}
+        timeLeft={timeLeft}
+        formatTime={formatTime}
+        onTerminate={() => setShowTerminateModal(true)}
+        onExtend={handleExtend}
+        isTerminated={otherUserLeft || timeUp || sessionEnded.current}
+      />
+      <div className="flex-1 overflow-y-auto px-4">
         <div className="max-w-4xl mx-auto py-4">
           <MessageContainer
             messages={messages}
             otherUserTyping={otherUserTyping}
             otherUserLeft={otherUserLeft}
             timeUp={timeUp || sessionEnded.current}
-            onViewFile={handleViewFile}
+            onViewFile={() => {}}
             messagesEndRef={messagesEndRef}
           />
         </div>
       </div>
-
       {!otherUserLeft && !timeUp && !sessionEnded.current ? (
-        <div
-          className="bg-navy border-t border-white/10 flex-shrink-0"
-          style={{ paddingBottom: keyboardHeight }}
-        >
-          <div className="max-w-4xl mx-auto px-4 h-[73px] flex items-center gap-2">
+        <div className="border-t border-white/10 px-4 py-3">
+          <div className="max-w-4xl mx-auto flex gap-2">
             <button
               onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-              disabled={!isConnected || isSendingFile || isUploading}
+              disabled={!isConnected}
               className="p-3 text-grey hover:text-white disabled:opacity-50 bg-white/5 rounded-xl hover:bg-white/10 transition-colors border border-white/10 hover:border-sky/30"
-              title="Attach file"
             >
               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
               </svg>
             </button>
-
             <input
               ref={inputRef}
               type="text"
               value={inputText}
-              onChange={handleTypingWrapper}
+              onChange={handleTyping}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -373,13 +428,12 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
                 }
               }}
               placeholder={isConnected ? "Type your message..." : "Connecting..."}
-              disabled={!isConnected || isSendingFile || isUploading}
+              disabled={!isConnected || otherUserLeft || timeUp || sessionEnded.current}
               className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/50 focus:outline-none focus:border-sky/50 disabled:opacity-50 text-base"
             />
-
             <button
               onClick={handleSend}
-              disabled={!inputText.trim() || !isConnected || isSendingFile || isUploading}
+              disabled={!inputText.trim() || !isConnected || otherUserLeft || timeUp || sessionEnded.current}
               className="p-3 bg-sky text-navy rounded-xl hover:bg-sky-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Send message"
             >
@@ -390,49 +444,69 @@ const ActiveChat: React.FC<ActiveChatProps> = ({
           </div>
         </div>
       ) : (
-        <div className="h-[73px] bg-navy border-t border-white/10 flex items-center justify-center flex-shrink-0">
+        <div className="border-t border-white/10 px-4 py-3">
           <TerminationActions onTerminate={handleSecondUserTerminate} />
         </div>
       )}
-
       <AttachmentMenu
         isOpen={showAttachmentMenu}
         onSelectImage={() => imageInputRef.current?.click()}
-        onSelectPDF={handleDummyFileSelect}
-        onSelectWord={handleDummyFileSelect}
-        onSelectExcel={handleDummyFileSelect}
-        onSelectPowerpoint={handleDummyFileSelect}
-        onSelectArchive={handleDummyFileSelect}
-        onSelectAudio={handleDummyFileSelect}
-        onSelectVideo={handleDummyFileSelect}
-        onSelectCode={handleDummyFileSelect}
+        onSelectPDF={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectWord={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectExcel={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectPowerpoint={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectArchive={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectAudio={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectVideo={() => notifyManagement('This file type is not yet supported', 'info')}
+        onSelectCode={() => notifyManagement('This file type is not yet supported', 'info')}
         onClose={() => setShowAttachmentMenu(false)}
       />
-
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
-        onChange={handleFileSelect}
+        onChange={() => {}}
         className="hidden"
       />
-
       <TerminationModal
         show={showTerminateModal}
         isTerminating={isTerminating}
         steps={terminationSteps}
-        onConfirm={confirmTerminate}
+        onConfirm={handleTerminate}
         onCancel={() => setShowTerminateModal(false)}
       />
-
       {previewFile && (
         <FileViewer
           file={previewFile}
           onClose={() => setPreviewFile(null)}
-          onViewed={handleFileViewed}
+          onViewed={() => {}}
         />
       )}
     </div>
+  );
+};
+
+const ActiveChat: React.FC<ActiveChatProps> = (props) => {
+  const handlerRef = useRef<((id: string, text: string, timestamp: number) => void) | undefined>();
+  const registerHandler = useCallback((h: (id: string, text: string, timestamp: number) => void) => {
+    handlerRef.current = h;
+  }, []);
+
+  return (
+    <EncryptionProvider
+      sessionId={props.sessionId}
+      encryptionKey={props.encryptionKey}
+      onMessageDecrypted={(id, text, timestamp) => {
+        if (handlerRef.current) {
+          handlerRef.current(id, text, timestamp);
+        }
+      }}
+    >
+      <ActiveChatContent
+        {...props}
+        onDecryptedHandlerRegister={registerHandler}
+      />
+    </EncryptionProvider>
   );
 };
 

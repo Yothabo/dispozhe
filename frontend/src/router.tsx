@@ -16,7 +16,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/create',
-    element: <CreateSessionPage onExit={() => window.location.href = '/'} />,
+    element: <CreateSessionPage />,
   },
   {
     path: '/code',

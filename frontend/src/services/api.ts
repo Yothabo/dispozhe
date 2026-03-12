@@ -44,7 +44,7 @@ class ApiService {
 
   async getSessionStatus(sessionId: string) {
     const response = await fetch(`${API_URL}/session/${sessionId}/status`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to get session status: ${response.status}`);
     }
@@ -59,6 +59,20 @@ class ApiService {
 
     if (!response.ok) {
       throw new Error(`Failed to terminate session: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async extendSession(sessionId: string, minutes: number) {
+    const response = await fetch(`${API_URL}/session/${sessionId}/extend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minutes })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to extend session: ${response.status}`);
     }
 
     return response.json();

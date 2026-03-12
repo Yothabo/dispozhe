@@ -1,17 +1,24 @@
-from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
-from dotenv import load_dotenv
+import logging
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./chatlly.db")
 
+# Increased pool size for stress tests
 engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+    pool_size=50,  # Increased from default 5
+    max_overflow=100,  # Increased from default 10
+    pool_pre_ping=True,  # Verify connections before using
+    pool_recycle=3600,  # Recycle connections after 1 hour
 )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -24,37 +31,28 @@ class Session(Base):
     expires_at = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
     participant_count = Column(Integer, default=1)
-    status = Column(String, default="waiting")  # waiting, active, expired, terminated
+    status = Column(String, default="waiting")
     link_active = Column(Boolean, default=True)
     terminated_at = Column(DateTime, nullable=True)
-    chat_started_at = Column(DateTime, nullable=True)  # When both users connected
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-            "duration_minutes": self.duration_minutes,
-            "participant_count": self.participant_count,
-            "status": self.status,
-            "link_active": self.link_active,
-            "terminated_at": self.terminated_at.isoformat() if self.terminated_at else None,
-            "chat_started_at": self.chat_started_at.isoformat() if self.chat_started_at else None
-        }
+    chat_started_at = Column(DateTime, nullable=True)
+    total_extensions = Column(Integer, default=0)
 
     def time_left(self) -> int:
-        """Calculate time left in seconds"""
         if self.status == "terminated":
             return 0
         if self.chat_started_at and datetime.utcnow() >= self.expires_at:
             return 0
         if not self.chat_started_at:
-            # Still waiting, return full duration
             return self.duration_minutes * 60
         return int((self.expires_at - datetime.utcnow()).total_seconds())
 
-# Create tables (this will add the new column)
-Base.metadata.create_all(bind=engine)
+    def extend_time(self, minutes: int) -> datetime:
+        self.expires_at = self.expires_at + timedelta(minutes=minutes)
+        return self.expires_at
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized successfully")
 
 def get_db():
     db = SessionLocal()

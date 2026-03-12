@@ -1,120 +1,118 @@
 import React, { useState } from 'react';
-import { FaTimes } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 
 interface ExtendTimeModalProps {
-  show: boolean;
-  onExtend: (minutes: number) => void;
+  isOpen: boolean;
   onClose: () => void;
-  canExtend?: boolean;
-  maxMinutes?: number;
+  onExtend: (minutes: number) => void;
 }
 
-const ExtendTimeModal: React.FC<ExtendTimeModalProps> = ({
-  show,
-  onExtend,
-  onClose,
-  canExtend = true,
-  maxMinutes = 5
-}) => {
+const ExtendTimeModal: React.FC<ExtendTimeModalProps> = ({ isOpen, onClose, onExtend }) => {
   const [customMinutes, setCustomMinutes] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
 
-  if (!show) return null;
+  const presets = [
+    { minutes: 5, display: '00:05', label: '5 min' },
+    { minutes: 15, display: '00:15', label: '15 min' },
+    { minutes: 30, display: '00:30', label: '30 min' },
+    { minutes: 60, display: '01:00', label: '1 hour' }
+  ];
 
-  const handleExtend = (minutes: number) => {
+  const handlePresetSelect = (minutes: number) => {
+    setSelectedPreset(minutes);
     onExtend(minutes);
-    onClose();
   };
 
-  const handleCustomExtend = () => {
-    const mins = parseInt(customMinutes);
-    if (mins > 0 && mins <= maxMinutes) {
-      onExtend(mins);
-      onClose();
+  const handleCustomSelect = () => {
+    const minutes = parseInt(customMinutes);
+    if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+      alert('Please enter a valid duration between 1 and 1440 minutes');
+      return;
+    }
+    setSelectedPreset(minutes);
+    onExtend(minutes);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCustomSelect();
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/80 backdrop-blur-sm">
-      <div className="glass rounded-2xl p-6 max-w-md w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Extend Chat Time</h3>
-          <button onClick={onClose} className="text-grey hover:text-white">
-            <FaTimes />
+      <div className="glass rounded-2xl p-8 max-w-md w-full">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onClose}
+            className="p-2 text-grey hover:text-white transition-colors"
+          >
+            <FaArrowLeft className="w-5 h-5" />
           </button>
+          <h2 className="text-2xl font-bold text-white">Add time</h2>
         </div>
 
-        {!canExtend ? (
-          <div className="text-center py-4">
-            <p className="text-grey mb-2">Maximum extension reached (5 minutes total)</p>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-sky text-navy rounded-lg font-medium hover:bg-sky-dark"
-            >
-              Close
-            </button>
+        {/* Preset buttons */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {presets.map((preset) => {
+            const isActive = selectedPreset === preset.minutes;
+
+            return (
+              <button
+                key={preset.minutes}
+                onClick={() => handlePresetSelect(preset.minutes)}
+                className={`
+                  p-6 rounded-xl border-2 transition-all text-center
+                  ${isActive
+                    ? 'border-sky bg-sky/10'
+                    : 'border-white/10 hover:border-sky/50 bg-white/5'
+                  }
+                `}
+              >
+                <div className="font-mono text-2xl font-bold mb-1">
+                  {preset.display}
+                </div>
+                <div className={`text-xs ${isActive ? 'text-sky' : 'text-grey/60'}`}>
+                  {preset.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Custom input divider */}
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/5"></div>
           </div>
-        ) : (
-          <>
-            <p className="text-grey mb-4 text-sm">
-              Add more time to your chat. Maximum total duration is 5 minutes.
-            </p>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-3 bg-navy text-grey/30">or custom</span>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <button
-                onClick={() => handleExtend(1)}
-                className="p-3 bg-white/5 rounded-xl hover:bg-sky/10 transition-colors border border-white/10 hover:border-sky/20"
-              >
-                <div className="font-mono text-xl font-bold text-white mb-1">+1 min</div>
-              </button>
-              <button
-                onClick={() => handleExtend(2)}
-                className="p-3 bg-white/5 rounded-xl hover:bg-sky/10 transition-colors border border-white/10 hover:border-sky/20"
-              >
-                <div className="font-mono text-xl font-bold text-white mb-1">+2 min</div>
-              </button>
-              <button
-                onClick={() => handleExtend(3)}
-                className="p-3 bg-white/5 rounded-xl hover:bg-sky/10 transition-colors border border-white/10 hover:border-sky/20"
-              >
-                <div className="font-mono text-xl font-bold text-white mb-1">+3 min</div>
-              </button>
-              <button
-                onClick={() => handleExtend(4)}
-                className="p-3 bg-white/5 rounded-xl hover:bg-sky/10 transition-colors border border-white/10 hover:border-sky/20"
-              >
-                <div className="font-mono text-xl font-bold text-white mb-1">+4 min</div>
-              </button>
-            </div>
-
-            <div className="relative mb-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/5"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-2 bg-navy text-grey">or custom</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={customMinutes}
-                onChange={(e) => setCustomMinutes(e.target.value)}
-                placeholder={`Max ${maxMinutes} min`}
-                min="1"
-                max={maxMinutes}
-                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-grey/50 focus:outline-none focus:border-sky/50"
-              />
-              <button
-                onClick={handleCustomExtend}
-                disabled={!customMinutes || parseInt(customMinutes) < 1 || parseInt(customMinutes) > maxMinutes}
-                className="px-4 py-2 bg-sky text-navy rounded-lg font-medium hover:bg-sky-dark disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-          </>
-        )}
+        {/* Custom input */}
+        <div className="flex gap-3">
+          <input
+            type="number"
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter minutes"
+            min="1"
+            max="1440"
+            className="flex-1 px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/30 focus:outline-none focus:border-sky/50 text-lg"
+          />
+          <button
+            onClick={handleCustomSelect}
+            disabled={!customMinutes}
+            className="px-6 py-4 bg-sky text-navy rounded-xl font-bold hover:bg-sky-dark transition-colors disabled:opacity-50 text-lg min-w-[100px]"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );

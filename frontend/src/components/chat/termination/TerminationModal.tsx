@@ -1,9 +1,12 @@
 import React from 'react';
 import { FaTrash, FaCheck } from 'react-icons/fa';
-
-import { TerminationStep } from '../types';
-
 import TerminationSteps from './TerminationSteps';
+
+interface TerminationStep {
+  id: number;
+  label: string;
+  status: 'pending' | 'loading' | 'completed';
+}
 
 interface TerminationModalProps {
   show: boolean;
@@ -32,13 +35,13 @@ const TerminationModal: React.FC<TerminationModalProps> = ({
             <FaCheck className="w-6 h-6 text-sky" />
           )}
         </div>
-        
+
         <h3 className="text-white text-xl font-bold text-center mb-4">
           {!isTerminating ? 'Terminate Session' : 'Session Destroyed'}
         </h3>
-        
+
         <TerminationSteps steps={steps} className="mb-6" />
-        
+
         <div className="flex gap-3">
           {!isTerminating ? (
             <>

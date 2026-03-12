@@ -30,3 +30,29 @@ build/
 Thumbs.db
 dispozhe/
 frontend/dispozhe/
+# Secrets and environment files
+.env
+.env.production
+.env.*
+*.pem
+*.key
+*.crt
+
+# SSL certificates
+/ssl/
+/letsencrypt/
+
+# Logs
+*.log
+audit.log
+/var/log/
+
+# Docker volumes
+/data/
+/postgres_data/
+
+# Local development
+.DS_Store
+*.db
+*.db-journal
+*.sqlite3

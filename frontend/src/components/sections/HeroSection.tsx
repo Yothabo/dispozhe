@@ -55,8 +55,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button onClick={onStartChat} className="btn-primary w-full sm:w-auto justify-center">
-                Start private Duo chat
+              <button 
+                onClick={onStartChat} 
+                className="btn-primary w-full sm:w-auto justify-center"
+              >
+                Start private chat
               </button>
               <button
                 onClick={() => navigate('/code')}

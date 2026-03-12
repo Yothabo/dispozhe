@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: chatie-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/chatlly
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+    env_file:
+      - ./backend/.env.production
+    volumes:
+      - ./backend/audit.log:/app/audit.log
+      - ./data:/app/data
+    depends_on:
+      - db
+    networks:
+      - chatie-network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  db:
+    image: postgres:15-alpine
+    container_name: chatie-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=chatlly
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-change_me_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chatie-network
+    security_opt:
+      - no-new-privileges:true
+
+  nginx:
+    image: nginx:alpine
+    container_name: chatie-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - chatie-network
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+
+networks:
+  chatie-network:
+    driver: bridge
