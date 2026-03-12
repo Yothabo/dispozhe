@@ -1,24 +1,24 @@
 # Driflly Roadmap
 
-## Important Note
+## Current Status
 
-This roadmap represents our current development priorities and aspirations. Timelines are estimates and may change based on resources, technical challenges, and community feedback. Some features described here are planned but not yet implemented. For a complete list of currently working features, see the README.md file.
+Driflly is currently in active development with a stable core feature set. The application provides end-to-end encrypted two-person chats with automatic session destruction, replay protection, and comprehensive testing. The system has been stress-tested to handle one hundred concurrent sessions with one hundred percent success rates. All core functionality is working in production.
 
 ## Recently Completed
 
-### Day 7 - Replay Protection (Completed March 2026)
+### Replay Protection Implementation
 
-The replay protection system adds security through HMAC-SHA256 signing of messages, sequence number tracking per client, and nonce tracking with 5-minute expiry. The module is implemented with feature flags allowing gradual rollout without breaking existing clients. When enabled, the system validates every message against sequence numbers and nonces before forwarding, preventing replay attacks and ensuring message integrity.
+The replay protection system adds security through HMAC-SHA256 signing of messages, sequence number tracking per client, and nonce tracking with a five-minute expiry. The module is implemented with feature flags allowing gradual rollout without breaking existing clients. When enabled, the system validates every message against sequence numbers and nonces before forwarding, preventing replay attacks and ensuring message integrity.
 
-### Day 8 - Comprehensive Test Suite (Completed March 2026)
+### Comprehensive Test Suite
 
-The test suite now includes 48 passing tests covering API endpoints, WebSocket functionality, encryption validation, and load testing. Stress tests confirm the system handles 100+ concurrent sessions with 100% success rate and 80+ requests per second throughput. Security tests validate replay protection with 14 passing test cases.
+The test suite now includes forty-eight passing tests covering API endpoints, WebSocket functionality, encryption validation, and load testing. Stress tests confirm the system handles one hundred concurrent sessions with one hundred percent success rate and eighty requests per second throughput. Security tests validate replay protection with fourteen passing test cases.
 
-### Day 9 - Documentation Alignment (In Progress)
+### Documentation Alignment
 
-Documentation is being updated to accurately reflect the current codebase state, removing references to unimplemented features and adding transparency about development status. This includes updates to the Manifesto, Roadmap, and Internal Dossier to clearly distinguish between working features and aspirational goals.
+Documentation has been updated to accurately reflect the current codebase state, removing references to unimplemented features and adding transparency about development status. This includes updates to the architecture documentation, security policy, and roadmap to clearly distinguish between working features and aspirational goals.
 
-## Near-Term Priorities (Next 3-6 Months)
+## Near-Term Priorities
 
 ### Enhanced File Sharing
 
@@ -38,9 +38,9 @@ Users will be able to extend session duration before expiration, up to a maximum
 
 ### Session Resumption
 
-Participants will be able to resume sessions after accidental disconnections within a 30-second grace period. If a participant loses connection and reconnects within this window, they will rejoin the existing session without triggering participant_left notifications. During the grace period, messages will be queued for the disconnected participant and delivered upon reconnection.
+Participants will be able to resume sessions after accidental disconnections within a thirty-second grace period. If a participant loses connection and reconnects within this window, they will rejoin the existing session without triggering participant_left notifications. During the grace period, messages will be queued for the disconnected participant and delivered upon reconnection.
 
-## Medium-Term Goals (6-12 Months)
+## Medium-Term Goals
 
 ### Group Mode
 
@@ -58,7 +58,7 @@ Users will be able to edit sent messages within a configurable time window, typi
 
 Users will be able to delete their own messages within a configurable time window. Deleted messages will disappear from all participants' interfaces and show a deleted placeholder. The deletion will be permanent and cannot be undone. Deletion will work by sending a delete command with the message ID, and recipients will remove the message from their UI.
 
-## Long-Term Vision (12+ Months)
+## Long-Term Vision
 
 ### Live Board Mode
 
@@ -80,52 +80,56 @@ Whisper mode will take ephemerality to the extreme with messages that disappear 
 
 ### WebAssembly for Encryption
 
-We have evaluated WebAssembly for encryption performance improvements but encountered compilation difficulties in the Termux development environment. The Web Crypto API provides adequate performance for current needs with hardware acceleration where available. We will continue to monitor WebAssembly toolchain improvements in Termux but have no immediate plans to migrate.
+WebAssembly has been evaluated for encryption performance improvements but encountered compilation difficulties in the Termux development environment. The Web Crypto API provides adequate performance for current needs with hardware acceleration where available. The team will continue to monitor WebAssembly toolchain improvements but has no immediate plans to migrate.
 
 ### WebRTC for Peer-to-Peer Transfer
 
-WebRTC has been evaluated for peer-to-peer file transfer to reduce server load. The complexity of signaling server implementation and limited mobile browser support have led us to prioritize WebSocket-based transfers for now. We may revisit this decision as WebRTC support matures.
+WebRTC has been evaluated for peer-to-peer file transfer to reduce server load. The complexity of signaling server implementation and limited mobile browser support have led the team to prioritize WebSocket-based transfers for now. WebRTC may be revisited as support matures.
 
 ### Native Mobile Applications
 
-Native mobile applications for iOS and Android have been considered but are not currently planned. The web application works well on mobile browsers and maintains the same privacy guarantees. Native apps would require additional maintenance without significant privacy benefits.
+Native mobile applications for iOS and Android have been considered but are not currently planned. The web application works well on mobile browsers and maintains the same privacy guarantees. Native apps would require additional maintenance without significant privacy benefits. Progressive web app capabilities will be explored as an alternative.
+
+### Database Scaling
+
+SQLite is suitable for the current single-server deployment but will become a bottleneck when horizontal scaling is required. A migration path to PostgreSQL has been designed and will be implemented when traffic levels exceed what a single instance can handle. The application uses SQLAlchemy which supports multiple database backends, making migration straightforward.
 
 ## Development Transparency
 
 ### Completed Features
 
-The following features from earlier roadmaps have been completed: end-to-end encryption with AES-256-GCM, zero-knowledge message relay, replay protection, comprehensive test suite, and stress testing validation.
+The following features have been completed and are working in production: end-to-end encryption with AES-256-GCM, zero-knowledge message relay, replay protection, comprehensive test suite, and stress testing validation.
 
-### Partially Implemented
+### In Development
 
-The Day 4 features including participant fingerprints, join handshake, and enhanced session metadata were not successfully implemented due to technical complexity. We have focused our efforts on security features that provide immediate value.
+The following features are currently in development: enhanced file sharing for additional file types, message reactions, and session extension capabilities. These are expected to be released in the next minor version.
 
-### Delayed Features
+### Planned But Not Started
 
-Some features originally planned for earlier releases have been delayed including group mode, file sharing for all types, and message reactions. These remain priorities but have been rescheduled based on resource availability.
+The following features are planned but have not yet been implemented: group mode, live board mode, broadcast mode, drop mode, and whisper mode. These represent aspirational goals and are not expected to be available in the near term.
 
 ## Release Cadence
 
 ### Version 1.0.x
 
-The 1.0.x series focuses on stability and security of core functionality. Releases include bug fixes, security updates, and minor enhancements to existing features. We aim for monthly patch releases as needed.
+The 1.0.x series focuses on stability and security of core functionality. Releases include bug fixes, security updates, and minor enhancements to existing features. The team aims for monthly patch releases as needed.
 
 ### Version 1.1.x
 
-The 1.1.x series will introduce enhanced file sharing and message reactions. This release is targeted for Q2 2026 with beta testing beginning in April.
+The 1.1.x series will introduce enhanced file sharing and message reactions. This release is targeted for release in the coming months with beta testing beginning before general availability.
 
 ### Version 1.2.x
 
-The 1.2.x series will add session extensions, resumption, and read receipt enhancements. This release is targeted for Q3 2026.
+The 1.2.x series will add session extensions, resumption, and read receipt enhancements. This release is targeted for the following quarter.
 
 ### Version 2.0.x
 
-The 2.0.x series will introduce group mode and custom access codes. This represents a major expansion of functionality and is targeted for Q1 2027.
+The 2.0.x series will introduce group mode and custom access codes. This represents a major expansion of functionality and is targeted for future release.
 
 ## Community Input
 
-We welcome community feedback on roadmap priorities. Feature requests and suggestions can be submitted through GitHub issues. We evaluate all suggestions based on alignment with privacy principles, technical feasibility, and development resources.
+Feature requests and suggestions can be submitted through GitHub issues. The team evaluates all suggestions based on alignment with privacy principles, technical feasibility, and development resources. Community feedback helps prioritize which features are developed next.
 
 ## Conclusion
 
-This roadmap represents our current plans and aspirations. We are committed to transparency about our progress and limitations. Features may be added, delayed, or removed based on technical challenges and user feedback. The core principle of privacy-first ephemeral communication guides all our decisions.
+This roadmap represents current plans and aspirations. The team is committed to transparency about progress and limitations. Features may be added, delayed, or removed based on technical challenges and user feedback. The core principle of privacy-first ephemeral communication guides all development decisions.

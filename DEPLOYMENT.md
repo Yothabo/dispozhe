@@ -1,4 +1,4 @@
-# Deployment Guide
+# Driflly Deployment Guide
 
 This guide covers deploying Driflly to production environments including Render for the backend and Vercel for the frontend.
 
@@ -10,7 +10,7 @@ Before deploying, ensure you have a Render account and your code is pushed to a 
 
 ### Configuration Files
 
-The render.yaml file in the backend directory configures the deployment. It specifies the service type as web, the runtime as Python, the build command as pip install -r requirements.txt, and the start command as uvicorn app:app --host 0.0.0.0 --port $PORT. Environment variables including STREAM_API_KEY and STREAM_API_SECRET are defined in this file or configured through the Render dashboard.
+The render.yaml file in the backend directory configures the deployment. It specifies the service type as web, the runtime as Python, the build command as pip install -r requirements.txt, and the start command as uvicorn app:app --host 0.0.0.0 --port $PORT. Environment variables are defined in this file or configured through the Render dashboard.
 
 ### Deployment Steps
 
@@ -22,7 +22,7 @@ SQLite databases on Render are ephemeral and will be lost when the service resta
 
 ### Environment Variables
 
-Configure the following environment variables in the Render dashboard. STREAM_API_KEY and STREAM_API_SECRET are required if using Stream Chat integration. DATABASE_URL can be set to override the default SQLite database location. ENVIRONMENT should be set to production to enable production-specific settings.
+Configure the following environment variables in the Render dashboard. DATABASE_URL can be set to override the default SQLite database location. ENVIRONMENT should be set to production to enable production-specific settings. ALLOWED_ORIGINS should include your frontend URLs such as https://driflly.vercel.app and https://driflly.netlify.app.
 
 ### Monitoring
 
@@ -44,7 +44,7 @@ For deployment through the Vercel dashboard, import your GitHub repository and V
 
 ### Environment Variables
 
-Configure frontend environment variables in the Vercel dashboard under project settings. VITE_API_URL should point to your production backend URL, for example https://your-backend.onrender.com. VITE_WS_URL should use the wss protocol for secure WebSocket connections, like wss://your-backend.onrender.com.
+Configure frontend environment variables in the Vercel dashboard under project settings. VITE_API_URL should point to your production backend URL, for example https://dispozhe.onrender.com. VITE_WS_URL should use the wss protocol for secure WebSocket connections, like wss://dispozhe.onrender.com.
 
 ### Custom Domains
 
@@ -54,7 +54,7 @@ Vercel allows configuring custom domains through the dashboard. Add your domain 
 
 ### Backend Environment Variables
 
-Create a .env file in the backend directory with the following variables. DATABASE_URL defaults to sqlite:///./chatlly.db. STREAM_API_KEY and STREAM_API_SECRET are optional for Stream integration. ENVIRONMENT should be development for local testing and production for deployed instances.
+Create a .env file in the backend directory with the following variables. DATABASE_URL defaults to sqlite:///./chatlly.db. ENVIRONMENT should be development for local testing and production for deployed instances. ALLOWED_ORIGINS should include your frontend URLs.
 
 ### Frontend Environment Variables
 
@@ -68,11 +68,11 @@ The backend includes security headers middleware that sets X-Frame-Options to DE
 
 ### Rate Limiting
 
-Rate limiting is configured to prevent abuse. Session creation is limited to 10 requests per minute per IP. Code redemption attempts are limited to 5 per minute per IP to prevent brute force attacks. These limits can be adjusted in the rate limiter configuration.
+Rate limiting is configured to prevent abuse. Session creation is limited to ten requests per minute per IP. Code redemption attempts are limited to five per minute per IP to prevent brute force attacks. These limits can be adjusted in the rate limiter configuration.
 
 ### Connection Pooling
 
-The database connection pool is configured with size 50 and overflow 100 to handle concurrent load. Pool pre-ping verifies connections before use, and pool recycle refreshes connections after one hour to prevent staleness. These settings were determined through stress testing.
+The database connection pool is configured with size fifty and overflow one hundred to handle concurrent load. Pool pre-ping verifies connections before use, and pool recycle refreshes connections after one hour to prevent staleness. These settings were determined through stress testing.
 
 ### SSL Termination
 

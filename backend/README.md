@@ -6,11 +6,11 @@ The Driflly backend is a FastAPI application that manages session creation, part
 
 ### Core Components
 
-The WebSocket Manager handles all real-time communication, maintaining connection pools per session and enforcing the two-participant limit. It uses in-memory storage only with no message persistence, and features connection tracking with session isolation, message relaying without inspection, automatic cleanup on disconnection, a heartbeat mechanism at 25-second intervals, and exponential backoff for reconnection attempts.
+The WebSocket Manager handles all real-time communication, maintaining connection pools per session and enforcing the two-participant limit. It uses in-memory storage only with no message persistence, and features connection tracking with session isolation, message relaying without inspection, automatic cleanup on disconnection, a heartbeat mechanism at twenty-five second intervals, and exponential backoff for reconnection attempts.
 
 The Message Handler implements the zero-knowledge relay pattern by validating message structure without inspecting content, forwarding encrypted payloads between participants, and queuing messages for offline delivery when recipients are disconnected.
 
-The Replay Protection module adds security through HMAC-SHA256 signing of messages, sequence number tracking per client, nonce tracking with 5-minute expiry, and configurable feature flags for gradual rollout without breaking existing clients.
+The Replay Protection module adds security through HMAC-SHA256 signing of messages, sequence number tracking per client, nonce tracking with five-minute expiry, and configurable feature flags for gradual rollout without breaking existing clients.
 
 The Session Management system follows a defined lifecycle where sessions begin in waiting state with one participant, transition to active when both participants connect, and terminate either through timer expiration or manual user action.
 
@@ -22,13 +22,15 @@ The database uses SQLite with two primary tables. The sessions table stores sess
 
 ### Session Management
 
-The session creation endpoint at POST /session/create accepts a JSON body with a duration field between 1 and 1440 minutes, and returns a session identifier, access code, sharing link, and expiration information.
+The session creation endpoint at POST /session/create accepts a JSON body with a duration field between one and fourteen hundred forty minutes, and returns a session identifier, access code, sharing link, and expiration information.
 
 The code redemption endpoint at POST /session/code/{code} validates the six-digit code, checks expiration and usage status, and returns the session identifier and encryption key for the joining participant.
 
 The direct join endpoint at POST /session/{sessionId}/join allows joining via link without a code, performing the same validation and returning session confirmation.
 
 The status endpoint at GET /session/{sessionId}/status returns current participant count, session status, expiration time, and time remaining.
+
+The extension endpoint at POST /session/{sessionId}/extend allows participants to add time to an active session, broadcasting the update to all connected clients.
 
 The termination endpoint at DELETE /session/{sessionId} immediately ends the session, deletes all associated data, and closes any open WebSocket connections.
 
@@ -40,17 +42,17 @@ Clients connect to ws://localhost:8080/ws/{sessionId} and upon successful connec
 
 ### Message Types
 
-Text messages are sent with type "message" and include a unique identifier, base64-encoded encrypted data, and timestamp. The server relays these messages to the other participant without modification.
+Text messages are sent with type message and include a unique identifier, base64-encoded encrypted data, and timestamp. The server relays these messages to the other participant without modification.
 
-Typing indicators use type "typing" with an isTyping boolean field, allowing participants to see when the other person is composing a message.
+Typing indicators use type typing with an isTyping boolean field, allowing participants to see when the other person is composing a message.
 
-Delivery status messages of type "delivery_status" inform senders when messages are queued, delivered, or failed.
+Delivery status messages of type delivery_status inform senders when messages are queued, delivered, or failed.
 
-Read receipts with type "read_receipt" notify senders when messages have been viewed by recipients.
+Read receipts with type read_receipt notify senders when messages have been viewed by recipients.
 
-File messages use type "file" and include filename, MIME type, size, base64-encoded data, and an optional viewOnce flag for self-destructing files.
+File messages use type file and include filename, MIME type, size, base64-encoded data, and an optional viewOnce flag for self-destructing files.
 
-File viewed notifications of type "file_viewed" trigger immediate deletion of view-once files after they are seen.
+File viewed notifications of type file_viewed trigger immediate deletion of view-once files after they are seen.
 
 Participant left messages inform remaining users when the other participant disconnects.
 
@@ -78,17 +80,17 @@ All input is validated at multiple levels. Session creation requires duration wi
 
 ### Unit Tests
 
-The test suite includes comprehensive unit tests for all components. Run pytest tests/ -v from the backend directory to execute all tests. Security-specific tests are in tests/test_security/ and validate replay protection, HMAC generation, sequence validation, and nonce tracking.
+The test suite includes comprehensive unit tests for all components. Run pytest tests/ -v from the backend directory to execute all tests. Security-specific tests are in tests/test_security and validate replay protection, HMAC generation, sequence validation, and nonce tracking.
 
 ### Stress Tests
 
-Stress tests against the real server validate system performance under load. The tests in tests/load/real_api_stress.py verify that the system handles 100+ concurrent sessions with 100% success rate and maintains performance metrics.
+Stress tests against the real server validate system performance under load. The tests in tests/load/real_api_stress.py verify that the system handles one hundred concurrent sessions with one hundred percent success rate and maintains performance metrics.
 
 ## Deployment
 
 ### Environment Configuration
 
-Create a .env file with required environment variables including DATABASE_URL for the database connection, STREAM_API_KEY and STREAM_API_SECRET if using Stream integration, and any other service-specific configuration.
+Create a .env file with required environment variables including DATABASE_URL for the database connection, ENVIRONMENT for environment-specific settings, and ALLOWED_ORIGINS for CORS configuration.
 
 ### Render Deployment
 
@@ -96,8 +98,8 @@ The render.yaml file configures deployment on Render with build command pip inst
 
 ### Database Management
 
-SQLite database files are stored locally and should be backed up regularly. Migration scripts fix_db.py and migrate_db.py are available for schema updates, though the current schema is stable.
+SQLite database files are stored locally and should be backed up regularly. Migration scripts are available for schema updates, though the current schema is stable.
 
 ## Performance Considerations
 
-The connection pool is configured with size 50 and overflow 100 to handle concurrent sessions without timeout errors. Pool pre-ping verifies connections before use, and pool recycle refreshes connections after one hour to prevent staleness. These settings were determined through stress testing and have proven effective for handling 100+ concurrent sessions.
+The connection pool is configured with size fifty and overflow one hundred to handle concurrent sessions without timeout errors. Pool pre-ping verifies connections before use, and pool recycle refreshes connections after one hour to prevent staleness. These settings were determined through stress testing and have proven effective for handling one hundred concurrent sessions.

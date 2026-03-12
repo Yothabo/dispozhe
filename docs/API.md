@@ -102,6 +102,30 @@ Example response:
   "created_at": "2026-03-03T12:30:00Z"
 }
 
+### Extend Session Duration
+
+This endpoint allows participants to extend the duration of an active session. The session must be in active status, and the extension minutes must be between one and sixty.
+
+A POST request to /session/{sessionId}/extend requires a JSON body with a minutes field specifying the additional time. The endpoint updates the session's expiration time and broadcasts the change to all connected clients.
+
+Example request:
+
+POST /session/abc123def456/extend
+Content-Type: application/json
+
+{
+  "minutes": 5
+}
+
+Example response:
+
+{
+  "session_id": "abc123def456",
+  "expires_at": "2026-03-03T12:39:56Z",
+  "minutes_added": 5,
+  "time_left_seconds": 300
+}
+
 ### Terminate a Session
 
 This endpoint immediately terminates an active session, deleting all associated data and notifying any connected participants. Termination can be initiated by either participant at any time.
@@ -273,7 +297,7 @@ Example session terminated message:
 
 ### HTTP Status Codes
 
-The API uses standard HTTP status codes to indicate the outcome of requests. 200 OK indicates success. 400 Bad Request indicates invalid input such as duration out of range or malformed JSON. 404 Not Found indicates that the requested session or code does not exist. 410 Gone indicates that the session has expired and is no longer available. 500 Internal Server Error indicates an unexpected server condition.
+The API uses standard HTTP status codes to indicate the outcome of requests. 200 OK indicates success. 400 Bad Request indicates invalid input such as duration out of range or malformed JSON. 404 Not Found indicates that the requested session or code does not exist. 410 Gone indicates that the session has expired and is no longer available. 429 Too Many Requests indicates rate limiting has been exceeded. 500 Internal Server Error indicates an unexpected server condition.
 
 ### WebSocket Close Codes
 

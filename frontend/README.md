@@ -14,17 +14,17 @@ State is managed through React hooks at appropriate levels. Global state like We
 
 ### Custom Hooks
 
-The useChatMessages hook manages message state, deduplication, and viewed file tracking. useChatTimer synchronizes the countdown timer with the backend and handles expiration events. useChatTermination orchestrates the session termination flow with visual feedback. useWebSocketConnection handles the WebSocket connection lifecycle including reconnection logic and connection state tracking. useSessionPolling periodically checks session status to detect when the second participant joins. useNavigationGuard intercepts device back button presses to trigger appropriate actions. useFileHandling manages file selection, reading, and sending with size limits and type validation. useChatTyping manages typing indicators with throttling to prevent network spam.
+The useChatMessages hook manages message state, deduplication, and viewed file tracking. useChatTimer synchronizes the countdown timer with the backend and handles expiration events. useChatTermination orchestrates the session termination flow with visual feedback. useWebSocketConnection handles the WebSocket connection lifecycle including reconnection logic with exponential backoff and connection state tracking. useSessionPolling periodically checks session status to detect when the second participant joins. useNavigationGuard intercepts device back button presses to trigger appropriate actions. useFileHandling manages file selection, reading, and sending with size limits and type validation. useChatTyping manages typing indicators with throttling to prevent network spam.
 
 ## Encryption Implementation
 
 ### Key Generation
 
-When a session is created, the frontend generates a 256-bit AES-GCM key using the Web Crypto API. This key never leaves the user's device and is used for all message encryption during the session. The key is stored only in memory and is discarded when the session ends.
+When a session is created, the frontend generates a two hundred fifty-six bit AES-GCM key using the Web Crypto API. This key never leaves the user's device and is used for all message encryption during the session. The key is stored only in memory and is discarded when the session ends.
 
 ### Message Encryption
 
-Messages are encrypted using AES-256-GCM with a random 12-byte IV for each message. The IV and ciphertext are combined and base64-encoded for transmission. The encrypted message includes a key identifier allowing recipients to verify they are using the correct session key.
+Messages are encrypted using AES-256-GCM with a random twelve-byte initialization vector for each message. The IV and ciphertext are combined and base64-encoded for transmission. The encrypted message includes a key identifier allowing recipients to verify they are using the correct session key.
 
 ### Replay Protection
 
@@ -56,15 +56,19 @@ The chat interface consists of a header showing session information and timer, a
 
 ### Timer Display
 
-A prominent timer shows time remaining in the session, updating in real-time. When less than 30 seconds remain, the timer turns yellow. At 10 seconds, it turns red and begins flashing. Users can extend the session by clicking the timer and selecting additional minutes.
+A prominent timer shows time remaining in the session, updating in real-time. When less than thirty seconds remain, the timer turns yellow. At ten seconds, it turns red. Users can extend the session by clicking the timer and selecting additional minutes.
 
 ### File Sharing
 
-Users can attach images up to 10MB by clicking the attachment button. Selected images are compressed if necessary, encrypted, and sent through the WebSocket connection. Recipients see image previews and can click to view full size. View-once images self-destruct after being viewed.
+Users can attach images up to ten megabytes by clicking the attachment button. Selected images are compressed if necessary, encrypted, and sent through the WebSocket connection. Recipients see image previews and can click to view full size. View-once images self-destruct after being viewed.
 
 ### Termination Flow
 
 When a user initiates termination, a modal appears showing the destruction process with animated steps. The session is deleted from the backend, and both participants are redirected to a session destroyed view with options to start a new chat or return home.
+
+## Mobile Keyboard Handling
+
+The interface implements WhatsApp-style keyboard behavior where only the input bar moves up when the keyboard appears. The header remains fixed at the top, and the messages area stays in place with no layout shifts. This is achieved through fixed positioning of the input bar with a bottom value that matches the keyboard height detected via the visualViewport API.
 
 ## Styling
 
