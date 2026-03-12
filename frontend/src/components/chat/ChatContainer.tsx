@@ -8,9 +8,42 @@ interface ChatContainerProps {
   title?: string;
 }
 
-const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose, children, title = "Private Chat" }) => {
+const ChatContainer: React.FC<ChatContainerProps> = ({ 
+  isOpen, 
+  onClose, 
+  children, 
+  title = "Private Chat" 
+}) => {
   const [isClosing, setIsClosing] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // WhatsApp-style keyboard detection
+  useEffect(() => {
+    const handleVisualViewportResize = () => {
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height;
+        const windowHeight = window.innerHeight;
+        const keyboardGuess = windowHeight - viewportHeight;
+        
+        if (keyboardGuess > 100) {
+          setKeyboardHeight(keyboardGuess);
+        } else {
+          setKeyboardHeight(0);
+        }
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleVisualViewportResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -52,7 +85,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose, children
 
   return (
     <>
-      {/* Backdrop - interactive element with role="button" */}
+      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm"
         onClick={onClose}
@@ -62,24 +95,27 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose, children
         aria-label="Close chat"
       />
 
-      {/* Chat Container - non-interactive container */}
-      <div
-        className={`fixed inset-0 z-50 flex items-end justify-center pointer-events-none`}
-      >
+      {/* Chat Container - WhatsApp style absolute positioning */}
+      <div className="fixed inset-0 z-50 pointer-events-none">
         <div
-          className={`relative bg-navy-light border-t border-white/10 rounded-t-2xl w-full sm:w-[70vh] shadow-2xl transition-all duration-300 ease-out flex flex-col pointer-events-auto ${
-            isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+          className={`absolute bg-navy-light border border-white/10 shadow-2xl transition-all duration-300 ease-out flex flex-col pointer-events-auto ${
+            isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{
-            height: '100%',
-            maxHeight: '100%',
-            width: '100%'
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'min(90vw, 800px)',
+            height: 'min(80vh, 600px)',
+            maxHeight: 'calc(100vh - 40px)',
+            borderRadius: '24px',
           }}
           role="dialog"
           aria-modal="true"
           aria-label={title}
         >
-          <div className="flex items-center justify-between px-4 border-b border-white/10 flex-shrink-0" style={{ height: '10%', minHeight: '48px' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-white">{title}</h3>
               <span className="text-xs text-grey/50 px-2 py-0.5 bg-white/5 rounded-full">E2EE</span>
@@ -99,22 +135,18 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose, children
             </button>
           </div>
 
-          <div className="flex-1 overflow-hidden" style={{ height: '90%' }}>
+          {/* Content - with keyboard padding */}
+          <div 
+            className="flex-1 overflow-hidden"
+            style={{ 
+              paddingBottom: keyboardHeight,
+              transition: 'padding-bottom 0.2s ease'
+            }}
+          >
             {children}
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (min-width: 640px) {
-          .fixed.inset-0 > div:last-child {
-            height: 70vh !important;
-            width: 70vh !important;
-            max-height: 70vh !important;
-            max-width: 70vh !important;
-          }
-        }
-      `}</style>
     </>
   );
 };

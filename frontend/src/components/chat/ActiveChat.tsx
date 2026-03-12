@@ -8,7 +8,8 @@ import { preventRefresh, disableRefreshKeys, setTerminatingState } from '../../u
 import { notifyManagement } from '../NotificationCenter';
 import { EncryptionProvider, useEncryption } from '../../contexts/WebSocketContext';
 import ChatHeader from './header/ChatHeader';
-import MessageContainer from './messages/MessageContainer';
+import MessageArea from './sections/MessageArea';
+import ChatInputSection from './sections/ChatInputSection';
 import AttachmentMenu from './file/AttachmentMenu';
 import FileViewer from './file/FileViewer';
 import TerminationActions from './termination/TerminationActions';
@@ -52,6 +53,7 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
   const [previewFile, setPreviewFile] = useState<FileMessage | null>(null);
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [timeUp, setTimeUp] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [terminationSteps, setTerminationSteps] = useState<TerminationStep[]>([
     { id: 1, label: 'Destroy session link', status: 'pending' },
     { id: 2, label: 'Wipe encryption keys from memory', status: 'pending' },
@@ -71,15 +73,59 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
   const sessionEnded = useRef(false);
   const mountedRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const connectionAttempted = useRef(false);
   const lastExtendedMinutes = useRef<number | null>(null);
+  const isAtBottom = useRef(true);
 
   const { messages, otherUserTyping, setOtherUserTyping, addMessage, updateMessageStatus } = useChatMessages(sessionId);
   const { sendEncrypted, isReady } = useEncryption();
+
+  // Track if user is near bottom
+  const handleMessagesScroll = useCallback(() => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      isAtBottom.current = scrollHeight - scrollTop - clientHeight < 50;
+    }
+  }, []);
+
+  // Auto-scroll to bottom when new messages arrive (only if already at bottom)
+  useEffect(() => {
+    if (isAtBottom.current && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages]);
+
+  // Simple keyboard detection - only update input position
+  useEffect(() => {
+    const updateKeyboardHeight = () => {
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height;
+        setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+      } else {
+        const heightDiff = document.documentElement.clientHeight - window.innerHeight;
+        setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateKeyboardHeight);
+    }
+    window.addEventListener('resize', updateKeyboardHeight);
+
+    updateKeyboardHeight();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
+      }
+      window.removeEventListener('resize', updateKeyboardHeight);
+    };
+  }, []);
 
   const handleExtend = useCallback(async (minutes: number) => {
     try {
@@ -169,7 +215,7 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
           reconnectAttempts.current = 0;
         }
       } catch {
-        // Silently fail - will show connection status in UI
+        // Silently fail
       }
     };
     connect();
@@ -237,6 +283,11 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
       });
       wsService.sendMessage(message);
       setInputText('');
+      
+      // Scroll after send
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      }
     }
   }, [inputText, isConnected, otherUserLeft, timeUp, sessionEnded, isReady, sendEncrypted, addMessage]);
 
@@ -266,13 +317,13 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
     setShowTerminateModal(false);
     terminationSteps.forEach((item, index) => {
       setTimeout(() => {
-        setTerminationSteps(prev =>
-          prev.map(i => i.id === item.id ? { ...i, status: 'loading' } : i)
+        setTerminationSteps((prev: TerminationStep[]) =>
+          prev.map((i: TerminationStep) => i.id === item.id ? { ...i, status: 'loading' } : i)
         );
       }, index * 400);
       setTimeout(() => {
-        setTerminationSteps(prev =>
-          prev.map(i => i.id === item.id ? { ...i, status: 'completed' } : i)
+        setTerminationSteps((prev: TerminationStep[]) =>
+          prev.map((i: TerminationStep) => i.id === item.id ? { ...i, status: 'completed' } : i)
         );
       }, index * 400 + 400);
     });
@@ -299,13 +350,13 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
     setShowSecondUserTermination(true);
     secondUserSteps.forEach((item, index) => {
       setTimeout(() => {
-        setSecondUserSteps(prev =>
-          prev.map(i => i.id === item.id ? { ...i, status: 'loading' } : i)
+        setSecondUserSteps((prev: TerminationStep[]) =>
+          prev.map((i: TerminationStep) => i.id === item.id ? { ...i, status: 'loading' } : i)
         );
       }, index * 400);
       setTimeout(() => {
-        setSecondUserSteps(prev =>
-          prev.map(i => i.id === item.id ? { ...i, status: 'completed' } : i)
+        setSecondUserSteps((prev: TerminationStep[]) =>
+          prev.map((i: TerminationStep) => i.id === item.id ? { ...i, status: 'completed' } : i)
         );
       }, index * 400 + 400);
     });
@@ -330,19 +381,14 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
     }
   }, [terminationCompleted, showSecondUserTermination, isTerminating]);
 
+  // Add scroll listener
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    if (messages.length === 0 || isTerminating || terminationCompleted || otherUserLeft || showSecondUserTermination) {
-      return;
+    const currentContainer = messagesContainerRef.current;
+    if (currentContainer) {
+      currentContainer.addEventListener('scroll', handleMessagesScroll);
+      return () => currentContainer.removeEventListener('scroll', handleMessagesScroll);
     }
-    const timeout = setTimeout(() => {
-      sessionStorage.setItem(`Driflly_messages_${sessionId}`, JSON.stringify(messages));
-    }, 500);
-    return () => clearTimeout(timeout);
-  }, [messages, sessionId, isTerminating, terminationCompleted, otherUserLeft, showSecondUserTermination]);
+  }, [handleMessagesScroll]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -384,70 +430,61 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
 
   return (
     <div className="fixed inset-0 bg-navy flex flex-col">
-      <ChatHeader
-        isConnected={isConnected}
-        timeLeft={timeLeft}
-        formatTime={formatTime}
-        onTerminate={() => setShowTerminateModal(true)}
-        onExtend={handleExtend}
-        isTerminated={otherUserLeft || timeUp || sessionEnded.current}
-      />
-      <div className="flex-1 overflow-y-auto px-4">
-        <div className="max-w-4xl mx-auto py-4">
-          <MessageContainer
-            messages={messages}
-            otherUserTyping={otherUserTyping}
-            otherUserLeft={otherUserLeft}
-            timeUp={timeUp || sessionEnded.current}
-            onViewFile={() => {}}
-            messagesEndRef={messagesEndRef}
+      {/* Header – fixed at top */}
+      <div className="flex-shrink-0 z-10">
+        <ChatHeader
+          isConnected={isConnected}
+          timeLeft={timeLeft}
+          formatTime={formatTime}
+          onTerminate={() => setShowTerminateModal(true)}
+          onExtend={handleExtend}
+          isTerminated={otherUserLeft || timeUp || sessionEnded.current}
+        />
+      </div>
+
+      {/* Messages area – fills space, no extra padding */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4"
+        onScroll={handleMessagesScroll}
+      >
+        <MessageArea
+          messages={messages}
+          otherUserTyping={otherUserTyping}
+          otherUserLeft={otherUserLeft}
+          timeUp={timeUp}
+          sessionEnded={sessionEnded.current}
+          onViewFile={() => {}}
+          messagesEndRef={messagesEndRef}
+        />
+      </div>
+
+      {/* Input section – only this moves with keyboard */}
+      {!otherUserLeft && !timeUp && !sessionEnded.current ? (
+        <div
+          className="fixed left-0 right-0 bg-navy border-t border-white/10"
+          style={{
+            bottom: keyboardHeight,
+          }}
+        >
+          <ChatInputSection
+            inputText={inputText}
+            isConnected={isConnected}
+            encryptionReady={isReady}
+            isSendingFile={false}
+            isUploading={false}
+            onInputChange={handleTyping}
+            onSend={handleSend}
+            onAttachmentClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+            inputRef={inputRef}
           />
         </div>
-      </div>
-      {!otherUserLeft && !timeUp && !sessionEnded.current ? (
-        <div className="border-t border-white/10 px-4 py-3">
-          <div className="max-w-4xl mx-auto flex gap-2">
-            <button
-              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-              disabled={!isConnected}
-              className="p-3 text-grey hover:text-white disabled:opacity-50 bg-white/5 rounded-xl hover:bg-white/10 transition-colors border border-white/10 hover:border-sky/30"
-            >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-              </svg>
-            </button>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputText}
-              onChange={handleTyping}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder={isConnected ? "Type your message..." : "Connecting..."}
-              disabled={!isConnected || otherUserLeft || timeUp || sessionEnded.current}
-              className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-grey/50 focus:outline-none focus:border-sky/50 disabled:opacity-50 text-base"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim() || !isConnected || otherUserLeft || timeUp || sessionEnded.current}
-              className="p-3 bg-sky text-navy rounded-xl hover:bg-sky-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Send message"
-            >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
       ) : (
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="fixed left-0 right-0 bottom-0 bg-navy border-t border-white/10 px-4 py-3">
           <TerminationActions onTerminate={handleSecondUserTerminate} />
         </div>
       )}
+
       <AttachmentMenu
         isOpen={showAttachmentMenu}
         onSelectImage={() => imageInputRef.current?.click()}
@@ -461,6 +498,7 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
         onSelectCode={() => notifyManagement('This file type is not yet supported', 'info')}
         onClose={() => setShowAttachmentMenu(false)}
       />
+
       <input
         ref={imageInputRef}
         type="file"
@@ -468,6 +506,7 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
         onChange={() => {}}
         className="hidden"
       />
+
       <TerminationModal
         show={showTerminateModal}
         isTerminating={isTerminating}
@@ -475,6 +514,7 @@ const ActiveChatContent: React.FC<ActiveChatContentProps> = ({
         onConfirm={handleTerminate}
         onCancel={() => setShowTerminateModal(false)}
       />
+
       {previewFile && (
         <FileViewer
           file={previewFile}
@@ -497,9 +537,7 @@ const ActiveChat: React.FC<ActiveChatProps> = (props) => {
       sessionId={props.sessionId}
       encryptionKey={props.encryptionKey}
       onMessageDecrypted={(id, text, timestamp) => {
-        if (handlerRef.current) {
-          handlerRef.current(id, text, timestamp);
-        }
+        if (handlerRef.current) handlerRef.current(id, text, timestamp);
       }}
     >
       <ActiveChatContent

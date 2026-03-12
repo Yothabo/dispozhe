@@ -285,7 +285,7 @@ button.btn-secondary,
   .input-area {
     display: none !important;
   }
-  
+
   body::after {
     content: "This content is private and cannot be printed.";
     display: block;
