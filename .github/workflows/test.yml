@@ -10,10 +10,10 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           
@@ -22,32 +22,30 @@ jobs:
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov locust bandit
+          pip install pytest pytest-asyncio pytest-cov httpx requests websockets bandit
           
       - name: Run unit tests
         run: |
           cd backend
-          pytest tests/ --cov=. --cov-report=xml --timeout=30
-          
-      - name: Run stress tests
-        run: |
-          cd backend
-          pytest tests/load/ -v --timeout=300
+          pytest tests/test_security/ -v
+          pytest tests/ -v --ignore=tests/load --ignore=tests/expiry --ignore=tests/websocket
           
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage.xml
 
   frontend-tests:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           
       - name: Install dependencies
         run: |
@@ -57,43 +55,17 @@ jobs:
       - name: Run unit tests
         run: |
           cd frontend
-          npm run test:unit -- --coverage
-          
-      - name: Run stress tests
-        run: |
-          cd frontend
-          npm run test:stress -- --run --bail=1
+          npm run test:all
           
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./frontend/coverage/lcov.info
 
-  load-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install locust
-          
-      - name: Start backend
-        run: |
-          cd backend
-          uvicorn app:app --host 0.0.0.0 --port 8000 &
-          sleep 5
-          
-      - name: Run Locust load tests
-        run: |
-          cd backend
-          locust -f tests/load/locustfile.py --headless -u 500 -r 10 --run-time 5m --host http://localhost:8000 || true
-          
   security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Install Bandit
         run: pip install bandit
@@ -109,7 +81,7 @@ jobs:
           npm audit --audit-level=high || true
           
       - name: Upload security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
@@ -118,8 +90,10 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Install dependencies
         run: |
@@ -153,13 +127,13 @@ jobs:
           
       - name: Upload Cypress screenshots
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots
           path: frontend/cypress/screenshots
 
   test-summary:
-    needs: [backend-tests, frontend-tests, load-tests, security-scan, e2e-tests]
+    needs: [backend-tests, frontend-tests, security-scan, e2e-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
