@@ -93,18 +93,68 @@ app.add_middleware(
     ]
 )
 
-# Get allowed origins from env
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:4173,http://127.0.0.1:3000").split(",")
+# Comprehensive CORS configuration for all environments
+# Get allowed origins from env with comprehensive defaults
+DEFAULT_ORIGINS = [
+    # Local development
+    "http://localhost:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:4173",
+    "http://localhost:5173",  # Vite default
+    "http://127.0.0.1:5173",
+    
+    # Production domains - Driflly
+    "https://driflly.vercel.app",
+    "https://driflly.netlify.app",
+    "https://www.driflly.vercel.app",
+    "https://www.driflly.netlify.app",
+    
+    # Production domains - Dispozhe (for backward compatibility)
+    "https://dispozhe.vercel.app",
+    "https://dispozhe.netlify.app",
+    "https://www.dispozhe.vercel.app",
+    "https://www.dispozhe.netlify.app",
+    
+    # Custom domains (if any)
+    "https://driflly.com",
+    "https://www.driflly.com",
+    "https://dispozhe.com",
+    "https://www.dispozhe.com",
+]
+
+# Allow override via environment variable
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", ",".join(DEFAULT_ORIGINS)).split(",")
+
+# Also create a regex pattern for more flexible matching
+ORIGIN_REGEX = os.getenv(
+    "ORIGIN_REGEX",
+    r"https?://(.*\.)?(driflly\.vercel\.app|driflly\.netlify\.app|dispozhe\.onrender\.com|dispozhe\.vercel\.app|dispozhe\.netlify\.app|localhost|127\.0\.0\.1)(:\d+)?$"
+)
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
-    expose_headers=["*"],
-    max_age=600,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
+    expose_headers=[
+        "Content-Length",
+        "Content-Type",
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials",
+    ],
+    max_age=600,  # 10 minutes
 )
 
 @app.get("/health")
