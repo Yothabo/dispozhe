@@ -1,5 +1,9 @@
 # Driflly
 
+<p align="center">
+  <img src="frontend/public/logo.png" alt="Driflly Logo" width="120" />
+</p>
+
 [![Tests](https://img.shields.io/github/actions/workflow/status/Yothabo/dispozhe/test.yml?branch=main&label=tests&style=for-the-badge)](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml)
 [![GitHub release](https://img.shields.io/github/v/release/Yothabo/dispozhe?style=for-the-badge)](https://github.com/Yothabo/dispozhe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -42,6 +46,10 @@ Ephemeral, encrypted two-person conversations that self-destruct. No data stored
 Driflly is a privacy-first communication platform where conversations are ephemeral by design. Messages are encrypted with AES-256-GCM using the Web Crypto API, keys never leave client devices, and the server acts as a zero-knowledge relay that never sees plaintext content. Sessions automatically self-destruct after a configured duration ranging from one minute to twenty-four hours.
 
 The project was developed entirely on Android devices using Termux, which imposed architectural constraints that ultimately made the production system more robust. Memory limitations forced efficient code splitting, storage constraints mandated minimal dependencies, and network variability led to resilient reconnection logic with exponential backoff. The system handles one hundred concurrent sessions with one hundred percent success rate under stress tests, achieving eighty requests per second throughput with sub-second response times.
+
+<p align="center">
+  <img src="frontend/public/images/hero-image.png" alt="Driflly waiting room — share your link, QR code, or six-digit key to invite a participant" width="800" />
+</p>
 
 ---
 
