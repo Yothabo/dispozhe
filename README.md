@@ -1,3 +1,4 @@
+```
 # Driflly
 
 [![Tests](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml/badge.svg)](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml)
@@ -10,12 +11,7 @@
 
 Ephemeral, encrypted two-person conversations that self-destruct. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux.
 
-**[Documentation](docs/README.md)** •
-**[API Reference](docs/API.md)** •
-**[Architecture](docs/ARCHITECTURE.md)** •
-**[Security](docs/SECURITY.md)** •
-**[Roadmap](docs/ROADMAP.md)** •
-**[Contributing](CONTRIBUTING.md)**
+[Documentation](docs/README.md) • [API Reference](docs/API.md) • [Architecture](docs/ARCHITECTURE.md) • [Security](docs/SECURITY.md) • [Roadmap](docs/ROADMAP.md) • [Contributing](CONTRIBUTING.md)
 
 ---
 
@@ -508,5 +504,6 @@ https://img.shields.io/badge/License-FFD700?style=for-the-badge&logo=open-source
 
 Built with privacy. Destroyed by design.
 
-
 ```
+
+
