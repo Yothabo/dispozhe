@@ -1,17 +1,16 @@
-import pytest
-from fastapi.testclient import TestClient
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from app import app
+from fastapi.testclient import TestClient
+import pytest
 
 @pytest.fixture
 def client():
-    """Create test client with proper host header"""
     with TestClient(app) as test_client:
-        test_client.headers.update({"host": "localhost"})
         yield test_client
 
 @pytest.fixture
-def async_client():
-    """Create async test client"""
-    from httpx import AsyncClient
-    client = AsyncClient(app=app, base_url="http://localhost")
-    return client
+def test_app():
+    return app

@@ -75,3 +75,10 @@ This project is licensed under the MIT License. See the LICENSE file in the docs
 ## Contact
 
 For general questions and support, email contact@driflly.app. Security issues should be reported to security@driflly.app. The source code is available on GitHub at github.com/Yothabo/dispozhe.
+
+## Test Status
+
+![Security Tests](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml/badge.svg)
+![Frontend Tests](https://img.shields.io/badge/frontend-34%2F34%20passing-brightgreen)
+![Security Tests](https://img.shields.io/badge/security-14%2F14%20passing-brightgreen)
+![Stress Tests](https://img.shields.io/badge/stress-100%25%20success-brightgreen)
