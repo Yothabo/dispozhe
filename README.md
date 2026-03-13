@@ -1,5 +1,3 @@
-
-```markdown
 # Driflly
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/Yothabo/dispozhe/test.yml?branch=main&label=tests&style=for-the-badge)](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml)
@@ -95,7 +93,7 @@ useWebSocketConnection({ sessionId, onConnected, onReconnecting });
 
 State management is layered appropriately, with session-specific state in custom hooks, WebSocket state in services, and UI state in components. This separation ensures predictable behavior and maintainable code.
 
-Backend Architecture
+### Backend Architecture
 
 The backend runs on FastAPI 0.115 with Python, using SQLite for minimal session metadata storage. No message content is ever written to disk. The WebSocket Manager handles connection pooling and message routing with the following core implementation:
 
@@ -120,11 +118,11 @@ class ReplayProtection:
         # Check sequence number monotonicity
         if message.sequence <= self.sequences[session_id][client_id]:
             return False
-        
+
         # Verify nonce uniqueness within expiry window
         if message.nonce in self.seen_nonces[session_id]:
             return False
-        
+
         # Validate HMAC signature
         expected = self.generate_hmac(session_id, message.data, message.sequence, message.nonce)
         return hmac.compare_digest(message.hmac, expected)
@@ -134,9 +132,9 @@ A background expiry scheduler runs every sixty seconds to automatically clean up
 
 ---
 
-Quick Start
+## Quick Start
 
-Backend Setup
+### Backend Setup
 
 ```bash
 git clone https://github.com/Yothabo/dispozhe.git
@@ -152,9 +150,9 @@ cp .env.example .env
 uvicorn app:app --reload --port 8080
 ```
 
-The backend will be available at http://localhost:8080 with API documentation at http://localhost:8080/docs.
+The backend will be available at `http://localhost:8080` with API documentation at `http://localhost:8080/docs`.
 
-Frontend Setup
+### Frontend Setup
 
 ```bash
 cd dispozhe/frontend
@@ -166,13 +164,13 @@ cp .env.example .env
 npm run dev
 ```
 
-The frontend will be available at http://localhost:3000.
+The frontend will be available at `http://localhost:3000`.
 
-Production Configuration
+### Production Configuration
 
-For production deployment, additional environment variables should be configured.
+For production deployment, configure the following environment variables.
 
-Backend environment variables:
+Backend:
 
 ```bash
 ENVIRONMENT=production
@@ -180,7 +178,7 @@ ALLOWED_ORIGINS=https://your-frontend-domain.com
 DATABASE_URL=sqlite:///./chatlly.db  # Or PostgreSQL URL
 ```
 
-Frontend environment variables:
+Frontend:
 
 ```bash
 VITE_API_URL=https://your-backend-domain.com
@@ -190,76 +188,77 @@ VITE_STREAM_API_KEY=your-stream-key-if-used
 
 ---
 
-Documentation
+## Documentation
 
-Core Documentation
+### Core Documentation
 
-Document Description Link
-API Reference Complete API endpoint and WebSocket documentation with examples docs/API.md
-Architecture Overview System design, data flow, and component interactions docs/ARCHITECTURE.md
-Security Policy Threat model, encryption standards, and vulnerability reporting docs/SECURITY.md
-Roadmap Planned features, timelines, and technology evaluations docs/ROADMAP.md
+| Document | Description | Link |
+|---|---|---|
+| API Reference | Complete API endpoint and WebSocket documentation with examples | [docs/API.md](docs/API.md) |
+| Architecture Overview | System design, data flow, and component interactions | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Security Policy | Threat model, encryption standards, and vulnerability reporting | [docs/SECURITY.md](docs/SECURITY.md) |
+| Roadmap | Planned features, timelines, and technology evaluations | [docs/ROADMAP.md](docs/ROADMAP.md) |
 
-Development Documentation
+### Development Documentation
 
-Document Description Link
-Contributing Guidelines How to contribute, code standards, and PR process CONTRIBUTING.md
-Code of Conduct Community guidelines and enforcement CODE_OF_CONDUCT.md
-Changelog Version history and release notes CHANGELOG.md
-Deployment Guide Production deployment instructions DEPLOYMENT.md
+| Document | Description | Link |
+|---|---|---|
+| Contributing Guidelines | How to contribute, code standards, and PR process | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Code of Conduct | Community guidelines and enforcement | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
+| Changelog | Version history and release notes | [CHANGELOG.md](CHANGELOG.md) |
+| Deployment Guide | Production deployment instructions | [DEPLOYMENT.md](DEPLOYMENT.md) |
 
-Analysis and Design
+### Analysis and Design
 
-Document Description Link
-Technical Analysis Comprehensive codebase assessment docs/ANALYSIS.md
-Internal Dossier Termux-first architecture deep dive docs/INTERNAL_DOSSIER.md
-Manifesto Privacy philosophy and design principles docs/MANIFESTO.md
-
----
-
-Technology Stack
-
-Frontend Technologies
-
-https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white
-https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white
-https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white
-https://img.shields.io/badge/Web_Crypto_API-FF6C2C?style=for-the-badge&logo=webcryptoapi&logoColor=white
-
-Backend Technologies
-
-https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
-https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white
-https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white
-https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white
-https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white
-https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=json-web-tokens&logoColor=white
-
-DevOps & Infrastructure
-
-https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
-https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white
-https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white
-https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white
-https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white
-https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white
-
-Development Tools
-
-https://img.shields.io/badge/Termux-000000?style=for-the-badge&logo=terminal&logoColor=white
-https://img.shields.io/badge/Vim-019733?style=for-the-badge&logo=vim&logoColor=white
-https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white
-https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white
-https://img.shields.io/badge/Prettier-F7B93E?style=for-the-badge&logo=prettier&logoColor=white
-https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white
+| Document | Description | Link |
+|---|---|---|
+| Technical Analysis | Comprehensive codebase assessment | [docs/ANALYSIS.md](docs/ANALYSIS.md) |
+| Internal Dossier | Termux-first architecture deep dive | [docs/INTERNAL_DOSSIER.md](docs/INTERNAL_DOSSIER.md) |
+| Manifesto | Privacy philosophy and design principles | [docs/MANIFESTO.md](docs/MANIFESTO.md) |
 
 ---
 
-Testing
+## Technology Stack
 
-Backend Security Tests
+### Frontend
+
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Web Crypto API](https://img.shields.io/badge/Web_Crypto_API-FF6C2C?style=for-the-badge&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+
+### Backend
+
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
+[![WebSockets](https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://websockets.readthedocs.io/)
+
+### DevOps & Infrastructure
+
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
+[![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+
+### Development Tools
+
+[![Termux](https://img.shields.io/badge/Termux-000000?style=for-the-badge&logo=terminal&logoColor=white)](https://termux.dev/)
+[![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)](https://git-scm.com/)
+[![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)](https://eslint.org/)
+[![Prettier](https://img.shields.io/badge/Prettier-F7B93E?style=for-the-badge&logo=prettier&logoColor=white)](https://prettier.io/)
+[![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)](https://www.npmjs.com/)
+
+---
+
+## Testing
+
+### Backend Security Tests
 
 ```bash
 cd backend
@@ -268,7 +267,7 @@ PYTHONPATH=. pytest tests/test_security/ -v
 
 All fourteen replay protection tests pass consistently, validating HMAC generation, sequence number tracking, nonce validation, and session cleanup.
 
-Frontend Unit Tests
+### Frontend Unit Tests
 
 ```bash
 cd frontend
@@ -277,7 +276,7 @@ npm run test:encryption
 
 Fourteen encryption tests verify that messages encrypt and decrypt correctly, different keys produce different ciphertext, tampered messages are rejected, and key import/export functions properly.
 
-Frontend Integration Tests
+### Frontend Integration Tests
 
 ```bash
 # Terminal 1: Start backend server
@@ -293,7 +292,7 @@ npm run test:termination
 
 Nineteen integration tests validate API endpoints, WebSocket connections, message exchange, typing indicators, and session termination flows.
 
-Stress Tests
+### Stress Tests
 
 ```bash
 cd backend
@@ -304,11 +303,11 @@ Stress tests verify that the system handles one hundred concurrent sessions with
 
 ---
 
-Deployment
+## Deployment
 
-Backend Deployment on Render
+### Backend on Render
 
-The backend is configured for deployment on Render using the included render.yaml:
+The backend is configured for deployment on Render using the included `render.yaml`:
 
 ```yaml
 services:
@@ -321,13 +320,13 @@ services:
 
 Required environment variables:
 
-· ENVIRONMENT=production
-· ALLOWED_ORIGINS=https://your-frontend-domain.com
-· DATABASE_URL=sqlite:///./chatlly.db (or PostgreSQL URL for production)
+- `ENVIRONMENT=production`
+- `ALLOWED_ORIGINS=https://your-frontend-domain.com`
+- `DATABASE_URL=sqlite:///./chatlly.db` (or PostgreSQL URL for production)
 
-Frontend Deployment on Vercel
+### Frontend on Vercel
 
-The frontend is configured for deployment on Vercel using the included vercel.json:
+The frontend is configured for deployment on Vercel using the included `vercel.json`:
 
 ```json
 {
@@ -339,12 +338,12 @@ The frontend is configured for deployment on Vercel using the included vercel.js
 
 Required environment variables:
 
-· VITE_API_URL=https://your-backend-domain.com
-· VITE_WS_URL=wss://your-backend-domain.com
+- `VITE_API_URL=https://your-backend-domain.com`
+- `VITE_WS_URL=wss://your-backend-domain.com`
 
-GitHub Actions CI/CD
+### GitHub Actions CI/CD
 
-The project includes a complete CI/CD pipeline in .github/workflows/test.yml that:
+The project includes a complete CI/CD pipeline in `.github/workflows/test.yml` that:
 
 1. Runs backend security tests (14 tests)
 2. Runs frontend unit tests (14 tests)
@@ -354,35 +353,35 @@ The project includes a complete CI/CD pipeline in .github/workflows/test.yml tha
 6. Deploys to Vercel on successful main branch builds
 7. Creates GitHub releases with auto-generated release notes
 
-Required secrets for GitHub Actions:
+Required GitHub Actions secrets:
 
-· RENDER_API_KEY and RENDER_SERVICE_ID for Render deployment
-· VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID for Vercel deployment
-· RELEASE_TOKEN for GitHub releases
+- `RENDER_API_KEY` and `RENDER_SERVICE_ID` for Render deployment
+- `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` for Vercel deployment
+- `RELEASE_TOKEN` for GitHub releases
 
 ---
 
-Security Considerations
+## Security Considerations
 
-In Scope
+### In Scope
 
 The system protects against several threat vectors:
 
-· Server compromise does not expose message content because encryption keys never leave client devices and messages are never stored
-· Network eavesdroppers cannot read message content because all traffic is encrypted end-to-end
-· Replay attacks are prevented through sequence numbers and nonce tracking with five-minute expiry windows
-· Brute force attacks against access codes are mitigated through rate limiting (five attempts per minute per IP) and short code expiry windows (thirty seconds)
+- **Server compromise** does not expose message content because encryption keys never leave client devices and messages are never stored.
+- **Network eavesdroppers** cannot read message content because all traffic is encrypted end-to-end.
+- **Replay attacks** are prevented through sequence numbers and nonce tracking with five-minute expiry windows.
+- **Brute force attacks** against access codes are mitigated through rate limiting (five attempts per minute per IP) and short code expiry windows (thirty seconds).
 
-Out of Scope
+### Out of Scope
 
 Certain threats are outside the system's control:
 
-· Device compromise where an attacker has access to the user's device cannot be prevented
-· Screenshots can be taken by participants and cannot be technically blocked
-· Network traffic metadata such as connection times and IP addresses may be visible to internet service providers
-· Code enumeration is theoretically possible within the one million code space, though rate limiting and expiry windows make this impractical
+- **Device compromise** where an attacker has access to the user's device cannot be prevented.
+- **Screenshots** can be taken by participants and cannot be technically blocked.
+- **Network traffic metadata** such as connection times and IP addresses may be visible to internet service providers.
+- **Code enumeration** is theoretically possible within the one million code space, though rate limiting and expiry windows make this impractical.
 
-Replay Protection Implementation
+### Replay Protection Implementation
 
 Each message includes security fields validated by the server before forwarding:
 
@@ -399,66 +398,62 @@ Each message includes security fields validated by the server before forwarding:
 }
 ```
 
-The server validates:
-
-· Sequence numbers are strictly increasing per client
-· Nonces are unique within the five-minute expiry window
-· HMAC signatures match the computed value using the session secret
+The server validates that sequence numbers are strictly increasing per client, nonces are unique within the five-minute expiry window, and HMAC signatures match the computed value using the session secret.
 
 ---
 
-Experimental Components
+## Experimental Components
 
-Rust Encryption Module
+### Rust Encryption Module
 
-The encryption-rust/ directory contains experimental Rust code for potential WebAssembly-based encryption performance improvements. This module is not used in production and is maintained for research purposes only.
+[![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 
-https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white
+The `encryption-rust/` directory contains experimental Rust code for potential WebAssembly-based encryption performance improvements. This module is not used in production and is maintained for research purposes only.
 
-Why it failed: The experiment encountered unresolvable dependency conflicts with older versions of the nalgebra library being pulled in as transitive dependencies. Version 0.5.1 of nalgebra had a malformed Cargo.toml that prevented Cargo from resolving the dependency graph. Attempts to patch or update the dependencies were unsuccessful due to API compatibility issues. The Termux development environment compounded these difficulties with memory exhaustion during compilation, cross-compilation complexity, and build times exceeding forty-five minutes per attempt.
+The experiment encountered unresolvable dependency conflicts with older versions of the `nalgebra` library being pulled in as transitive dependencies. Version 0.5.1 of `nalgebra` had a malformed `Cargo.toml` that prevented Cargo from resolving the dependency graph. Attempts to patch or update the dependencies were unsuccessful due to API compatibility issues. The Termux development environment compounded these difficulties with memory exhaustion during compilation, cross-compilation complexity, and build times exceeding forty-five minutes per attempt.
 
-Stream Chat Integration
+### Stream Chat Integration
 
-The stream-chat dependency appears in requirements.txt but is not used in production. Stream Chat is architecturally incompatible with Driflly's zero-knowledge, ephemeral messaging model because it requires message persistence and server-managed encryption keys.
+[![Stream](https://img.shields.io/badge/Stream_Chat-FF6C2C?style=for-the-badge&logoColor=white)](https://getstream.io/)
 
-https://img.shields.io/badge/Stream_Chat-FF6C2C?style=for-the-badge&logo=stream&logoColor=white
+The `stream-chat` dependency appears in `requirements.txt` but is not used in production. Stream Chat is architecturally incompatible with Driflly's zero-knowledge, ephemeral messaging model because it requires message persistence and server-managed encryption keys.
 
-Why it's not used: Stream Chat is designed around message persistence and history, which directly contradicts Driflly's ephemeral architecture. The platform stores messages on its servers to enable search, channel history, and thread replies. Stream Chat's encryption model uses server-managed keys, which violates Driflly's zero-knowledge promise where keys never leave client devices. Integrating Stream Chat would require fundamental compromises to the security model.
+Stream Chat is designed around message persistence and history, which directly contradicts Driflly's ephemeral architecture. The platform stores messages on its servers to enable search, channel history, and thread replies. Stream Chat's encryption model uses server-managed keys, which violates Driflly's zero-knowledge promise where keys never leave client devices.
 
 ---
 
-Contributing
+## Contributing
 
-Contributions are welcome. Please read the Contributing Guidelines and Code of Conduct first.
+Contributions are welcome. Please read the [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before getting started.
 
-https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge
-https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow?style=for-the-badge
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/Yothabo/dispozhe/blob/main/CONTRIBUTING.md)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow?style=for-the-badge)](https://www.conventionalcommits.org/)
 
-Development Workflow
+### Development Workflow
 
 1. Fork the repository
-2. Create a feature branch (git checkout -b feature/amazing-feature)
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes
 4. Run tests to ensure everything passes
-5. Commit your changes (git commit -m 'Add amazing feature')
-6. Push to the branch (git push origin feature/amazing-feature)
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
 7. Open a Pull Request
 
-Code Standards
+### Code Standards
 
-· Python: Follow PEP 8 with Black formatting (88 character line limit)
-· TypeScript: Use strict mode, no any types, explicit interfaces
-· React: Use functional components with hooks, extract complex logic into custom hooks
-· Styling: Use Tailwind CSS classes, avoid custom CSS
-· Testing: Include tests for new features, maintain coverage above eighty percent
+- **Python:** Follow PEP 8 with Black formatting (88 character line limit)
+- **TypeScript:** Use strict mode, no `any` types, explicit interfaces
+- **React:** Use functional components with hooks, extract complex logic into custom hooks
+- **Styling:** Use Tailwind CSS classes, avoid custom CSS
+- **Testing:** Include tests for new features, maintain coverage above eighty percent
 
 ---
 
-License
+## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the [LICENSE](docs/LICENSE) file for details.
 
-https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 ```
 MIT License
@@ -486,7 +481,7 @@ SOFTWARE.
 
 ---
 
-Acknowledgments
+## Acknowledgments
 
 Built with privacy as the primary requirement. Inspired by the need for truly ephemeral communication. Special thanks to all contributors and the open source community.
 
@@ -494,27 +489,23 @@ The project was developed entirely on Android devices using Termux, demonstratin
 
 ---
 
-Contact
+## Contact
 
-· General questions: contact@driflly.app
-· Security issues: security@driflly.app
-· GitHub: Yothabo/dispozhe
-· Documentation: docs/README.md
-
----
-
-Quick Links
-
-https://img.shields.io/badge/Documentation-4285F4?style=for-the-badge&logo=readthedocs&logoColor=white
-https://img.shields.io/badge/API_Reference-FF6F00?style=for-the-badge&logo=swagger&logoColor=white
-https://img.shields.io/badge/Architecture-000000?style=for-the-badge&logo=diagramsdotnet&logoColor=white
-https://img.shields.io/badge/Security-FF0000?style=for-the-badge&logo=security&logoColor=white
-https://img.shields.io/badge/Roadmap-8A2BE2?style=for-the-badge&logo=roadmapdotsh&logoColor=white
-https://img.shields.io/badge/Contributing-28A745?style=for-the-badge&logo=git&logoColor=white
+- General questions: [contact@driflly.app](mailto:contact@driflly.app)
+- Security issues: [security@driflly.app](mailto:security@driflly.app)
+- GitHub: [Yothabo/dispozhe](https://github.com/Yothabo/dispozhe)
+- Documentation: [docs/README.md](docs/README.md)
 
 ---
 
-Built with privacy. Destroyed by design.
+[![Documentation](https://img.shields.io/badge/Documentation-4285F4?style=for-the-badge&logo=readthedocs&logoColor=white)](docs/README.md)
+[![API Reference](https://img.shields.io/badge/API_Reference-FF6F00?style=for-the-badge&logo=swagger&logoColor=white)](docs/API.md)
+[![Architecture](https://img.shields.io/badge/Architecture-000000?style=for-the-badge&logo=diagramsdotnet&logoColor=white)](docs/ARCHITECTURE.md)
+[![Security](https://img.shields.io/badge/Security-FF0000?style=for-the-badge&logo=security&logoColor=white)](docs/SECURITY.md)
+[![Roadmap](https://img.shields.io/badge/Roadmap-8A2BE2?style=for-the-badge&logo=roadmapdotsh&logoColor=white)](docs/ROADMAP.md)
+[![Contributing](https://img.shields.io/badge/Contributing-28A745?style=for-the-badge&logo=git&logoColor=white)](CONTRIBUTING.md)
 
-```
+---
+
+*Built with privacy. Destroyed by design.*
 
