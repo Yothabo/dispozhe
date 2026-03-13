@@ -1,18 +1,12 @@
 # Driflly - Ephemeral, Encrypted Conversations That Vanish
 
-Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux, Driflly demonstrates that complex web applications can be developed anywhere, on any device, without sacrificing security or performance.
+Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux, Driflly demonstrates that complex web applications can be developed anywhere, on any device without sacrificing security or performance.
 
 ## Current Working Features
 
-### Core Functionality
-
 End-to-end encryption is implemented using AES-256-GCM through the Web Crypto API. Keys are generated on user devices and never transmitted to servers, ensuring that message content remains private between participants. The zero-knowledge relay architecture means the server forwards encrypted messages between participants without ever seeing plaintext content. Replay protection is enforced through HMAC signing, sequence numbering, and nonce tracking, preventing attackers from resending captured messages. One-time access is managed through six-digit codes that expire after thirty seconds or single-use links that become invalid immediately after first use. Sessions automatically self-destruct after the configured duration, which can range from one minute to twenty-four hours, and either participant can manually terminate a session at any time, immediately deleting all associated data.
 
-### Current Mode
-
-Duo mode provides private two-person ephemeral chats with complete functionality including message exchange, typing indicators, read receipts, and file sharing for images up to ten megabytes. The interface is optimized for mobile devices with responsive design and touch-friendly interactions.
-
-### Performance Metrics
+Duo mode provides private two-person ephemeral chats with complete functionality including message exchange, typing indicators, read receipts, and file sharing for images up to ten megabytes. The interface is optimized for mobile devices with responsive design and touch-friendly interactions. When the keyboard appears on mobile, only the input bar moves upward while the header and message list remain stationary, providing a smooth experience identical to WhatsApp and other modern messaging applications.
 
 The system handles one hundred concurrent sessions with one hundred percent success rate under stress tests, achieving eighty requests per second throughput with sub-second response times for mixed API calls. The connection pool is configured for fifty connections with one hundred overflow, eliminating previous timeout issues. These numbers are verified through real_api_stress.py which runs against a live server instance.
 
@@ -28,45 +22,19 @@ Driflly is engineered to be developed entirely on mobile devices using Termux. T
 
 ## Installation
 
-### Frontend Setup
-
 To set up the frontend, navigate to the frontend directory and install dependencies using npm install. Copy the environment example file to create your configuration with cp .env.example .env and edit the file with your specific settings. Start the development server with npm run dev, which will make the frontend available at http://localhost:3000.
-
-### Backend Setup
 
 For the backend, navigate to the backend directory and create a Python virtual environment using python -m venv venv. Activate the virtual environment with source venv/bin/activate on Unix systems or venv\Scripts\activate on Windows. Install dependencies with pip install -r requirements.txt. Copy the environment example file with cp .env.example .env and edit as needed. Start the server with python app.py, which will run on http://localhost:8080.
 
 ## Testing
 
-### Frontend Tests
-
 The frontend test suite can be run from the frontend directory. Use npm test to run all tests, npm run test:api for API endpoint tests, npm run test:ws for WebSocket functionality tests, and npm run test:encryption for encryption and decryption tests. Test coverage reports are generated with npm run test:coverage. All thirty-four tests pass consistently.
-
-### Backend Tests
 
 Backend tests are run from the backend directory using pytest. Execute pytest tests/ -v to run all tests with verbose output, pytest tests/test_security/ -v for security-specific tests including replay protection, and python tests/load/real_api_stress.py to run stress tests against the real server. All fourteen security tests pass consistently.
 
-## Project Status
-
-### Implemented Features
-
-End-to-end encryption with AES-256-GCM ensures that all messages are encrypted before leaving the client device. The zero-knowledge message relay transforms the backend into a pure conduit that never inspects message content. Replay protection includes HMAC signing, sequence numbering, and nonce tracking, with feature flags for safe gradual rollout. The comprehensive test suite includes over forty-eight passing tests, including stress tests that validate the system handles one hundred concurrent sessions.
-
-### In Progress
-
-Documentation alignment ensures all documentation accurately reflects the current codebase state. Mobile user experience improvements focus on keyboard handling and touch interactions. File sharing expansion will add support for additional file types.
-
-### Future Development
-
-Planned enhancements include group mode for small multi-participant sessions, live board for classroom and meeting engagement, broadcast for one-to-many announcements, drop for self-destructing file transfer, and whisper for micro-messages that disappear after reading. Enhanced file sharing will support all common file types with appropriate preview capabilities. Read receipt enhancements will provide more detailed delivery information. Session extensions and resumption will allow conversations to continue beyond initial time limits and survive brief network interruptions.
-
-## Security Considerations
-
-The security model is based on several principles. Encryption keys never leave client devices, preventing server-side decryption. Message content is never stored, eliminating historical data exposure. Access codes expire after thirty seconds and are single-use, limiting brute force opportunities. Rate limiting prevents enumeration attacks. Users should be aware that screenshots can be taken by participants, devices may cache data outside the application, and network traffic metadata may be visible to internet service providers.
-
 ## Documentation
 
-The project documentation includes an API reference at docs/API.md detailing all available endpoints and WebSocket messages. The architecture overview at docs/ARCHITECTURE.md provides a deep dive into system design decisions. Security policies and practices are documented in docs/SECURITY.md. The development roadmap at docs/ROADMAP.md outlines planned features and timelines. Contribution guidelines are available in docs/CONTRIBUTING.md, and the code of conduct is at docs/CODE_OF_CONDUCT.md.
+The API reference at docs/API.md details all available endpoints and WebSocket messages. The architecture overview at docs/ARCHITECTURE.md provides a deep dive into system design decisions. Security policies and practices are documented in docs/SECURITY.md. The development roadmap at docs/ROADMAP.md outlines planned features and timelines. Contribution guidelines are available in docs/CONTRIBUTING.md, and the code of conduct is at docs/CODE_OF_CONDUCT.md.
 
 ## License
 
@@ -75,10 +43,3 @@ This project is licensed under the MIT License. See the LICENSE file in the docs
 ## Contact
 
 For general questions and support, email contact@driflly.app. Security issues should be reported to security@driflly.app. The source code is available on GitHub at github.com/Yothabo/dispozhe.
-
-## Test Status
-
-![Security Tests](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml/badge.svg)
-![Frontend Tests](https://img.shields.io/badge/frontend-34%2F34%20passing-brightgreen)
-![Security Tests](https://img.shields.io/badge/security-14%2F14%20passing-brightgreen)
-![Stress Tests](https://img.shields.io/badge/stress-100%25%20success-brightgreen)
