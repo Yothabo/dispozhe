@@ -1,7 +1,4 @@
-```markdown
-# Driflly - Ephemeral, Encrypted Conversations That Vanish
-
-Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux, Driflly demonstrates that complex web applications can be developed anywhere, on any device without sacrificing security or performance.
+Driflly is a privacy-first communication platform where conversations are ephemeral by design. No data is stored, no identity is required, and all communication is end-to-end encrypted. Built entirely on mobile devices using Termux, Driflly demonstrates that complex web applications can be developed anywhere, on any device without sacrificing security or performance.
 
 ## Current Working Features
 
@@ -13,29 +10,44 @@ The system handles one hundred concurrent sessions with one hundred percent succ
 
 ## Architecture Overview
 
-### Frontend Architecture
-
-The frontend is built with React 18 and TypeScript, using Vite 5 for fast development and optimized builds. Tailwind CSS 3 provides styling, while the Web Crypto API handles client-side encryption. WebSocket connections enable real-time communication with the backend.
-
-Custom hooks encapsulate complex logic throughout the application:
+The frontend is built with React 18 and TypeScript, using Vite 5 for fast development and optimized builds. Tailwind CSS 3 provides styling, while the Web Crypto API handles client-side encryption. WebSocket connections enable real-time communication with the backend. Custom hooks encapsulate complex logic such as message handling, timer management, and termination flows. State management is layered appropriately, with session-specific state in custom hooks, WebSocket state in services, and UI state in components. The following example shows the WebSocket connection hook with exponential backoff:
 
 ```typescript
-// Message management with deduplication and status tracking
-const { messages, addMessage, updateMessageStatus } = useChatMessages(sessionId);
+const useWebSocketConnection = ({
+  sessionId,
+  onConnected,
+  onReconnecting
+}: UseWebSocketConnectionProps) => {
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 30;
+  const [isConnected, setIsConnected] = useState(false);
 
-// Timer synchronization with backend
-const { timeLeft, formatTime } = useChatTimer(initialDuration);
+  const connect = useCallback(async () => {
+    try {
+      await wsService.connect(sessionId);
+      setIsConnected(true);
+      reconnectAttempts.current = 0;
+      onConnected?.();
+    } catch (error) {
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current), 30000);
+        reconnectAttempts.current++;
+        setTimeout(connect, delay);
+        onReconnecting?.(reconnectAttempts.current);
+      }
+    }
+  }, [sessionId, onConnected, onReconnecting]);
 
-// Termination flow with visual feedback
-const { isTerminating, handleTerminate } = useChatTermination(sessionId);
+  useEffect(() => {
+    connect();
+    return () => {
+      wsService.disconnect();
+    };
+  }, [connect]);
 
-// WebSocket connection lifecycle with exponential backoff
-useWebSocketConnection({ sessionId, onConnected, onReconnecting });
-```
+  return { isConnected };
+};
 
-State management is layered appropriately, with session-specific state in custom hooks, WebSocket state in services, and UI state in components. This separation ensures predictable behavior and maintainable code.
-
-Backend Architecture
 
 The backend runs on FastAPI 0.115 with Python, using SQLite for minimal session metadata storage. No message content is ever written to disk. The WebSocket Manager handles connection pooling and message routing with the following core implementation:
 
@@ -50,58 +62,71 @@ class WebSocketManager:
         recipients = self.connections.get(session_id, set()) - {sender}
         for recipient in recipients:
             await recipient.send_text(json.dumps(message_data))
+
+    async def broadcast(self, session_id: str, message: dict, exclude: Optional[WebSocket] = None):
+        connections = self.connections.get(session_id, set())
+        for conn in connections:
+            if conn != exclude:
+                await conn.send_text(json.dumps(message))
 ```
 
 The replay protection module ensures message integrity through HMAC validation, sequence number tracking, and nonce deduplication:
 
 ```python
 class ReplayProtection:
-    def validate_message(self, session_id: str, client_id: str, message: dict) -> bool:
-        # Check sequence number monotonicity
-        if message.sequence <= self.sequences[session_id][client_id]:
-            return False
+    def __init__(self, max_sequence_gap: int = 100, nonce_expiry_seconds: int = 300):
+        self.max_sequence_gap = max_sequence_gap
+        self.nonce_expiry_seconds = nonce_expiry_seconds
+        self.sequences: Dict[str, Dict[str, int]] = {}
+        self.seen_nonces: Dict[str, Dict[str, float]] = {}
+        self.enabled = False
+
+    def validate_message(self, session_id: str, client_id: str, message: dict, secret_key: str = None) -> Tuple[bool, str]:
+        if not self.enabled:
+            return True, "protection_disabled"
+
+        sequence = message.get('sequence')
+        nonce = message.get('nonce')
         
-        # Verify nonce uniqueness within expiry window
-        if message.nonce in self.seen_nonces[session_id]:
-            return False
+        if sequence is None:
+            return False, "missing_sequence"
+        if nonce is None:
+            return False, "missing_nonce"
+
+        if session_id not in self.sequences:
+            self.sequences[session_id] = {}
         
-        # Validate HMAC signature
-        expected = self.generate_hmac(session_id, message.data, message.sequence, message.nonce)
-        return hmac.compare_digest(message.hmac, expected)
+        last_seq = self.sequences[session_id].get(client_id, -1)
+        if sequence <= last_seq:
+            return False, f"sequence_too_old (got {sequence}, last {last_seq})"
+        if sequence > last_seq + self.max_sequence_gap:
+            return False, f"sequence_gap_too_large (got {sequence}, last {last_seq})"
+        
+        self.sequences[session_id][client_id] = sequence
+
+        self._cleanup_old_nonces(session_id)
+        if session_id not in self.seen_nonces:
+            self.seen_nonces[session_id] = {}
+        if nonce in self.seen_nonces[session_id]:
+            return False, "nonce_replayed"
+        
+        self.seen_nonces[session_id][nonce] = time.time()
+
+        if secret_key and 'hmac' in message:
+            expected = self.generate_hmac(secret_key, message.get('data', ''), sequence, nonce)
+            if not hmac.compare_digest(message['hmac'], expected):
+                return False, "hmac_invalid"
+        elif secret_key and 'hmac' not in message:
+            return False, "missing_hmac"
+
+        return True, "valid"
 ```
 
 A background expiry scheduler runs every sixty seconds to automatically clean up expired sessions. The connection pool is configured for fifty connections with one hundred overflow, settings derived from stress testing rather than guesswork.
 
 Development Environment
 
-Driflly is engineered to be developed entirely on mobile devices using Termux. This constraint has shaped every architectural decision to optimize for memory, storage, and network limitations.
-
-Memory Optimization
-
-Memory optimization is achieved through splitting build processes into smaller chunks, configuring development servers with lower memory footprints, maintaining a minimal dependency philosophy, and optimizing WebSocket connections for memory efficiency. Each active session consumes approximately five to ten kilobytes for connection tracking and message queuing.
-
-Storage Efficiency
-
-Storage efficiency is maintained through regular cleanup scripts, SQLite with automatic VACUUM operations, and compressed asset delivery. The database stores only session metadata, never message content, keeping the total database size under one megabyte even with thousands of session records.
-
-Network Resilience
-
-Network resilience is ensured through exponential backoff for reconnection attempts, message queuing for offline scenarios, heartbeat intervals of twenty-five seconds to detect stale connections, and graceful degradation on slow connections. The reconnection logic follows this pattern:
-
-```typescript
-const attemptReconnect = () => {
-  reconnectAttempts++;
-  const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 30000);
-  
-  setTimeout(() => {
-    if (shouldReconnect) {
-      connect(sessionId)
-        .then(() => reconnectAttempts = 0)
-        .catch(() => attemptReconnect());
-    }
-  }, delay);
-};
-```
+Driflly is engineered to be developed entirely on mobile devices using Termux. This constraint has shaped every architectural decision to optimize for memory, storage, and network limitations. Memory optimization is achieved through splitting build processes into smaller chunks, configuring development servers with lower memory footprints, maintaining a minimal dependency philosophy, and optimizing WebSocket connections for memory efficiency. Each active session consumes approximately five to ten kilobytes for connection tracking and message queuing. Storage efficiency is maintained through regular cleanup scripts, SQLite with automatic VACUUM operations, and compressed asset delivery. The database stores only session metadata, never message content, keeping the total database size under one megabyte even with thousands of session records. Network resilience is ensured through exponential backoff for reconnection attempts, message queuing for offline scenarios, heartbeat intervals of twenty-five seconds to detect stale connections, and graceful degradation on slow connections.
 
 Installation
 
@@ -162,24 +187,6 @@ npm run dev
 
 The frontend will be available at http://localhost:3000.
 
-Production Configuration
-
-For production deployment, additional environment variables should be configured. The backend requires:
-
-```bash
-ENVIRONMENT=production
-ALLOWED_ORIGINS=https://your-frontend-domain.com
-DATABASE_URL=sqlite:///./chatlly.db  # Or PostgreSQL URL
-```
-
-The frontend requires:
-
-```bash
-VITE_API_URL=https://your-backend-domain.com
-VITE_WS_URL=wss://your-backend-domain.com
-VITE_STREAM_API_KEY=your-stream-key-if-used
-```
-
 Testing
 
 Frontend Tests
@@ -234,72 +241,9 @@ python tests/load/real_api_stress.py
 
 All fourteen security tests pass consistently, and stress tests achieve one hundred percent success rates with up to one hundred concurrent sessions.
 
-Deployment
-
-Backend Deployment on Render
-
-The backend is configured for deployment on Render using the included render.yaml file. The service uses Python 3.13 with the following build and start commands:
-
-```yaml
-buildCommand: pip install -r requirements.txt
-startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
-```
-
-Required environment variables for production:
-
-```
-ENVIRONMENT=production
-ALLOWED_ORIGINS=https://your-frontend-domain.com
-```
-
-Frontend Deployment on Vercel
-
-The frontend is configured for deployment on Vercel using the included vercel.json file:
-
-```json
-{
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
-}
-```
-
-Required environment variables for production:
-
-```
-VITE_API_URL=https://your-backend-domain.com
-VITE_WS_URL=wss://your-backend-domain.com
-```
-
-GitHub Actions CI/CD
-
-The project includes a complete CI/CD pipeline in .github/workflows/test.yml that:
-
-1. Runs backend security tests
-2. Runs frontend unit tests
-3. Runs frontend integration tests with a live backend
-4. Executes stress tests against a real server
-5. Deploys to Render and Vercel on successful main branch builds
-6. Creates GitHub releases with auto-generated release notes
-
-All secrets must be configured in the GitHub repository for deployment to work:
-
-· RENDER_API_KEY and RENDER_SERVICE_ID for Render deployment
-· VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID for Vercel deployment
-· RELEASE_TOKEN for GitHub releases
-
 Security Considerations
 
-The security model is based on several principles. Encryption keys never leave client devices, preventing server-side decryption. Message content is never stored, eliminating historical data exposure. Access codes expire after thirty seconds and are single-use, limiting brute force opportunities. Rate limiting prevents enumeration attacks with five attempts per minute per IP address.
-
-Users should be aware of inherent limitations:
-
-· Screenshots can be taken by participants and cannot be technically blocked
-· Devices may cache data outside the application at the operating system level
-· Network traffic metadata such as connection times and IP addresses may be visible to internet service providers
-· The six-digit code space of one million combinations is theoretically brute-forceable, though rate limiting and short expiry windows mitigate this risk
-
-The replay protection implementation provides defense against captured message reuse through sequence numbers, nonce tracking, and HMAC signatures. Each message includes:
+The security model is based on several principles. Encryption keys never leave client devices, preventing server-side decryption. Message content is never stored, eliminating historical data exposure. Access codes expire after thirty seconds and are single-use, limiting brute force opportunities. Rate limiting prevents enumeration attacks with five attempts per minute per IP address. Users should be aware of inherent limitations including that screenshots can be taken by participants and cannot be technically blocked, devices may cache data outside the application at the operating system level, network traffic metadata such as connection times and IP addresses may be visible to internet service providers, and the six-digit code space of one million combinations is theoretically brute-forceable though rate limiting and short expiry windows mitigate this risk. The replay protection implementation provides defense against captured message reuse through sequence numbers, nonce tracking, and HMAC signatures. Each message includes the following structure:
 
 ```json
 {
@@ -318,24 +262,18 @@ The server validates all fields before forwarding messages to recipients, reject
 
 Documentation
 
-The API reference at docs/API.md details all available endpoints and WebSocket messages with example requests and responses. The architecture overview at docs/ARCHITECTURE.md provides a deep dive into system design decisions, component interactions, and data flows. Security policies and practices, including the threat model and incident response procedures, are documented in docs/SECURITY.md. The development roadmap at docs/ROADMAP.md outlines planned features, timelines, and technology evaluations. Contribution guidelines are available in docs/CONTRIBUTING.md, and the code of conduct is at docs/CODE_OF_CONDUCT.md. A comprehensive technical analysis is available at docs/ANALYSIS.md.
+Comprehensive documentation is available in the docs directory. The API Reference details all available endpoints and WebSocket messages with example requests and responses. The Architecture Overview provides a deep dive into system design decisions, component interactions, and data flows. Security policies and practices, including the threat model and incident response procedures, are documented in the Security Policy. The development roadmap at ROADWAY.md outlines planned features, timelines, and technology evaluations. Contribution guidelines are available in CONTRIBUTING.md, and the code of conduct is at CODE_OF_CONDUCT.md. A comprehensive technical analysis is available at ANALYSIS.md. The LICENSE file contains the full MIT license terms.
 
 Experimental Components
 
-Rust Encryption Module
+The encryption-rust directory contains experimental Rust code for potential WebAssembly-based encryption performance improvements. This module is not used in production and is maintained for research purposes only. The experiment failed due to unresolvable dependency conflicts and Termux compilation constraints. The stream-chat-issue.md file explains why the Stream Chat dependency appears in requirements.txt but is not used in production, as it is architecturally incompatible with Driflly's zero-knowledge ephemeral messaging model.
 
-The encryption-rust directory contains experimental Rust code for potential WebAssembly-based encryption performance improvements. This module is not used in production and is maintained for research purposes only. The experiment failed due to unresolvable dependency conflicts and Termux compilation constraints. See encryption-rust/README.md for a detailed explanation of the challenges encountered and lessons learned.
+Project Analysis
 
-Stream Chat Integration
+The codebase consists of approximately fifty-five percent TypeScript and nineteen percent Python, with the remainder being documentation and configuration files. The frontend contains one hundred twelve modules organized into forty-nine directories, while the backend follows a modular structure with clear separation between routes, models, services, and utilities. The test suite includes forty-eight passing tests across both frontend and backend, with stress tests confirming the system handles one hundred concurrent sessions with one hundred percent success rates. The CI/CD pipeline runs all tests automatically on every push and executes deployments to Render and Vercel when tests pass on the main branch. The project has achieved several significant milestones including complete end-to-end encryption implementation, zero-knowledge relay architecture, replay protection, comprehensive test coverage, mobile-optimized keyboard handling, and automated deployment pipeline. Known limitations include file sharing being restricted to images up to ten megabytes, SQLite scaling constraints for horizontal deployment, and the abandoned Rust experiment documented in the encryption-rust directory.
 
-The stream-chat dependency appears in requirements.txt but is not used in production. Stream Chat is architecturally incompatible with Driflly's zero-knowledge, ephemeral messaging model because it requires message persistence and server-managed encryption keys. See stream-chat-issue.md for a detailed analysis of the incompatibility.
+License and Contact
 
-License
-
-This project is licensed under the MIT License. See the LICENSE file in the docs directory for complete terms.
-
-Contact
-
-For general questions and support, email contact@driflly.app. Security issues should be reported to security@driflly.app. The source code is available on GitHub at github.com/Yothabo/dispozhe.
+This project is licensed under the MIT License. The full license terms are available in the LICENSE file. For general questions and support, email contact@driflly.app. Security issues should be reported to security@driflly.app. The source code is available on GitHub at github.com/Yothabo/dispozhe.
 
 ```
