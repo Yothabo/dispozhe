@@ -27,7 +27,7 @@ jobs:
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install pytest pytest-asyncio httpx
 
       - name: Run security tests
         run: |
@@ -73,6 +73,7 @@ jobs:
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install httpx
 
       - name: Start backend server
         run: |
@@ -136,8 +137,8 @@ jobs:
           echo "========================================="
           echo "✅ TEST SUMMARY"
           echo "========================================="
-          echo "• Backend Security Tests: Running"
-          echo "• Frontend Unit Tests: Running"
-          echo "• Frontend Integration Tests: Running"
-          echo "• Stress Tests: Running"
+          echo "• Backend Security Tests: Complete"
+          echo "• Frontend Unit Tests: Complete"
+          echo "• Frontend Integration Tests: Complete"
+          echo "• Stress Tests: Complete"
           echo "========================================="
