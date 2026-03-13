@@ -1,17 +1,23 @@
-```
+
+```markdown
 # Driflly
 
-[![Tests](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml/badge.svg)](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml)
-[![GitHub release](https://img.shields.io/github/v/release/Yothabo/dispozhe)](https://github.com/Yothabo/dispozhe/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Yothabo/dispozhe/blob/main/CONTRIBUTING.md)
-[![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://github.com/Yothabo/dispozhe/blob/main/CODE_OF_CONDUCT.md)
-[![GitHub issues](https://img.shields.io/github/issues/Yothabo/dispozhe)](https://github.com/Yothabo/dispozhe/issues)
-[![GitHub stars](https://img.shields.io/github/stars/Yothabo/dispozhe)](https://github.com/Yothabo/dispozhe/stargazers)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Yothabo/dispozhe/test.yml?branch=main&label=tests&style=for-the-badge)](https://github.com/Yothabo/dispozhe/actions/workflows/test.yml)
+[![GitHub release](https://img.shields.io/github/v/release/Yothabo/dispozhe?style=for-the-badge)](https://github.com/Yothabo/dispozhe/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/Yothabo/dispozhe/blob/main/CONTRIBUTING.md)
+[![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa?style=for-the-badge)](https://github.com/Yothabo/dispozhe/blob/main/CODE_OF_CONDUCT.md)
+[![GitHub issues](https://img.shields.io/github/issues/Yothabo/dispozhe?style=for-the-badge)](https://github.com/Yothabo/dispozhe/issues)
+[![GitHub stars](https://img.shields.io/github/stars/Yothabo/dispozhe?style=for-the-badge)](https://github.com/Yothabo/dispozhe/stargazers)
 
 Ephemeral, encrypted two-person conversations that self-destruct. No data stored. No identity required. End-to-end encrypted. Built entirely on mobile devices using Termux.
 
-[Documentation](docs/README.md) • [API Reference](docs/API.md) • [Architecture](docs/ARCHITECTURE.md) • [Security](docs/SECURITY.md) • [Roadmap](docs/ROADMAP.md) • [Contributing](CONTRIBUTING.md)
+[![Documentation](https://img.shields.io/badge/Documentation-4285F4?style=for-the-badge&logo=readthedocs&logoColor=white)](docs/README.md)
+[![API Reference](https://img.shields.io/badge/API_Reference-FF6F00?style=for-the-badge&logo=swagger&logoColor=white)](docs/API.md)
+[![Architecture](https://img.shields.io/badge/Architecture-000000?style=for-the-badge&logo=diagramsdotnet&logoColor=white)](docs/ARCHITECTURE.md)
+[![Security](https://img.shields.io/badge/Security-FF0000?style=for-the-badge&logo=security&logoColor=white)](docs/SECURITY.md)
+[![Roadmap](https://img.shields.io/badge/Roadmap-8A2BE2?style=for-the-badge&logo=roadmapdotsh&logoColor=white)](docs/ROADMAP.md)
+[![Contributing](https://img.shields.io/badge/Contributing-28A745?style=for-the-badge&logo=git&logoColor=white)](CONTRIBUTING.md)
 
 ---
 
@@ -407,7 +413,7 @@ Rust Encryption Module
 
 The encryption-rust/ directory contains experimental Rust code for potential WebAssembly-based encryption performance improvements. This module is not used in production and is maintained for research purposes only.
 
-Read the detailed analysis →
+https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white
 
 Why it failed: The experiment encountered unresolvable dependency conflicts with older versions of the nalgebra library being pulled in as transitive dependencies. Version 0.5.1 of nalgebra had a malformed Cargo.toml that prevented Cargo from resolving the dependency graph. Attempts to patch or update the dependencies were unsuccessful due to API compatibility issues. The Termux development environment compounded these difficulties with memory exhaustion during compilation, cross-compilation complexity, and build times exceeding forty-five minutes per attempt.
 
@@ -415,7 +421,7 @@ Stream Chat Integration
 
 The stream-chat dependency appears in requirements.txt but is not used in production. Stream Chat is architecturally incompatible with Driflly's zero-knowledge, ephemeral messaging model because it requires message persistence and server-managed encryption keys.
 
-Read the detailed analysis →
+https://img.shields.io/badge/Stream_Chat-FF6C2C?style=for-the-badge&logo=stream&logoColor=white
 
 Why it's not used: Stream Chat is designed around message persistence and history, which directly contradicts Driflly's ephemeral architecture. The platform stores messages on its servers to enable search, channel history, and thread replies. Stream Chat's encryption model uses server-managed keys, which violates Driflly's zero-knowledge promise where keys never leave client devices. Integrating Stream Chat would require fundamental compromises to the security model.
 
@@ -424,6 +430,9 @@ Why it's not used: Stream Chat is designed around message persistence and histor
 Contributing
 
 Contributions are welcome. Please read the Contributing Guidelines and Code of Conduct first.
+
+https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge
+https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow?style=for-the-badge
 
 Development Workflow
 
@@ -448,6 +457,8 @@ Code Standards
 License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge
 
 ```
 MIT License
@@ -496,14 +507,14 @@ Quick Links
 
 https://img.shields.io/badge/Documentation-4285F4?style=for-the-badge&logo=readthedocs&logoColor=white
 https://img.shields.io/badge/API_Reference-FF6F00?style=for-the-badge&logo=swagger&logoColor=white
+https://img.shields.io/badge/Architecture-000000?style=for-the-badge&logo=diagramsdotnet&logoColor=white
 https://img.shields.io/badge/Security-FF0000?style=for-the-badge&logo=security&logoColor=white
+https://img.shields.io/badge/Roadmap-8A2BE2?style=for-the-badge&logo=roadmapdotsh&logoColor=white
 https://img.shields.io/badge/Contributing-28A745?style=for-the-badge&logo=git&logoColor=white
-https://img.shields.io/badge/License-FFD700?style=for-the-badge&logo=open-source-initiative&logoColor=black
 
 ---
 
 Built with privacy. Destroyed by design.
 
 ```
-
 
