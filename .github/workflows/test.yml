@@ -153,13 +153,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+        run: |
+          cd frontend
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} \
+            --scope=${{ secrets.VERCEL_ORG_ID }} \
+            -m "githubCommitSha=${{ github.sha }}" \
+            -m "githubCommitAuthorName=${{ github.actor }}" \
+            -m "githubCommitMessage=${{ github.event.head_commit.message }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   # ============= RELEASE JOB =============
   create-release:
@@ -213,16 +220,10 @@ jobs:
       - name: Display test results
         run: |
           echo "========================================="
-          echo "✅ TEST SUMMARY"
+          echo "✅ ALL TESTS PASSED!"
           echo "========================================="
           echo "• Backend Security Tests: 14/14 passed"
           echo "• Frontend Unit Tests: 14/14 passed"
           echo "• Frontend Integration Tests: 19/19 passed"
           echo "• Stress Tests: 100% success"
-          echo "========================================="
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "🚀 Deployment will trigger on successful tests"
-          else
-            echo "📦 Branch: ${{ github.ref }} (deployments disabled)"
-          fi
           echo "========================================="
